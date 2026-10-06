@@ -161,9 +161,9 @@ pythonpath = ["."]
 **`.gitignore`** — 15 lines
 
 ```text
-# data, runs, weights and secrets never go into git
-data/
-runs/
+# data, runs, weights and secrets never go into git (leading slash: top level only, so dcttgen/data/ stays tracked)
+/data/
+/runs/
 third_party/MuCodec/
 third_party/stable-audio-metrics/
 .venv*/
