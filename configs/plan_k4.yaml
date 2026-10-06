@@ -1,0 +1,2 @@
+# D1: the plan's codec. After M3 set codec.checkpoint to runs/codec/<name>/step_<N>
+codec: {tag: k4v10000, num_codebooks: 4, codebook_size: 10000}

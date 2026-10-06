@@ -1,0 +1,15 @@
+# data, runs, weights and secrets never go into git
+data/
+runs/
+third_party/MuCodec/
+third_party/stable-audio-metrics/
+.venv*/
+*.pt
+*.pth
+*.ckpt
+*.safetensors
+.env
+*.key
+__pycache__/
+*.egg-info/
+.pytest_cache/

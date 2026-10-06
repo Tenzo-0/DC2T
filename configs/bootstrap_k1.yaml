@@ -1,0 +1,2 @@
+# D1: the released MuCodec weights (works on day one)
+codec: {tag: k1v16384, num_codebooks: 1, codebook_size: 16384}

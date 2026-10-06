@@ -1,0 +1,88 @@
+# Every key that exists is documented here; overlays and --override may only change keys listed in this file.
+paths:
+  data_root: data                 # manifest/, audio/, codes/        (relative paths are resolved against the repository root)
+  mucodec_root: third_party/MuCodec
+  runs: runs
+audio:
+  sample_rate: 32000              # Plan 3.5 - dataset format, mono
+  frame_rate: 25                  # Plan 3.2 - code frames per second, per codebook
+codec:
+  tag: k4v10000                   # names data/codes/<tag>/
+  num_codebooks: 4                # K - Plan 3.2
+  codebook_size: 10000            # V - Plan 3.2
+  muq_layer: 7                    # MuEncoder layer feeding the RVQ (released default)
+  window_frames: 896              # 35.84 s training window - Plan 3.2
+  checkpoint: null                # our trained RVQ + RF weights; null = released MuCodec weights (valid only for K=1, V=16384)
+data:                             # chapter 01
+  peak: 0.8                       # loudest sample of a standardised recording (MuCodec's own encoder limits peaks to 0.8)
+  top_db: 50.0                    # head and tail quieter than this below the loudest frame are trimmed
+  cut_slack_s: 15                 # how far a cut may move from its even position to reach a quiet second
+  vocal_prob: 0.5                 # P(voice) above which a patch counts as sung
+  vocal_max_recording: 0.2        # recordings with a larger sung fraction are dropped
+  fad_models: [vggish, clap-laion-music, encodec-emb]   # fadtk model names - Plan 3.5: VGGish, CLAP, EnCodec
+  fad_reference: pool             # pool = the dataset itself | gold = the recordings listed in data/gold.txt
+  fad_excerpt_s: 60               # equal-length centre excerpts make per-file scores comparable
+  fad_drop_fraction: 0.1          # R5: the HIGH tail is discarded
+  fad_z_max: null                 # if set, discard z > fad_z_max instead of a fixed fraction
+  bpm_min_confidence: 0.3         # below this the tempo is flagged for a human check
+  tempo_bands: [70, 110]          # bpm < 70 = slow, >= 110 = fast (caption wording)
+  caption_model: gpt-4o           # Plan 3.5
+  caption_attempts: 3
+  val_percent: 2.0                # Plan 4.1
+rf:                               # chapter 02
+  width: 1024                     # full size: 313.1 M parameters (pilot overlay: 512 / 8 / 8 = 28.8 M)
+  depth: 24
+  heads: 16
+  cond_drop: 0.1                  # how often the code condition is replaced by the null vector in training
+  ema_decay: 0.9999
+  w_commit: 0.25                  # RVQ loss weights, as in the example at the end of MuCodec's descript_quantize3.py
+  w_codebook: 1.0
+  norm_batches: 200               # batches used by codec.train --fit-norm
+  decode_steps: 16                # Euler steps of Codec.decode; the sweep in chapter 02 decides the final number
+  decode_cfg: 1.5                 # guidance scale (the released decoder's value)
+  vae_window: 128                 # latent frames per Mel-VAE / HiFi-GAN window (10.24 s)
+  vae_hop: 96
+lm:
+  backbone: Qwen/Qwen2.5-0.5B     # D11
+  loss_on_plan: true              # D8
+  checkpoint: null
+  attn: sdpa                      # attention implementation passed to transformers: sdpa | flash_attention_2 | eager
+  grad_checkpointing: false       # trades speed for memory
+  max_tokens: 32768               # token budget of one batch: documents x longest document
+  max_seconds: null               # drop clips longer than this (pilot runs, small GPUs)
+  num_workers: 4
+train:                            # Plan 3.6 - the same optimiser for both models. All step counts are OPTIMISER steps.
+  lr: 3.0e-4
+  lr_min: 3.0e-5                  # D10
+  weight_decay: 0.1               # applied to tensors with ndim >= 2 only
+  betas: [0.9, 0.999]
+  eps: 1.0e-9
+  warmup_steps: 500               # Decision: the plan gives no schedule length
+  max_steps: 20000                # Decision: the plan gives no length. 20,000 steps x 64 items = about 46 passes over 28,000 clips; set per stage
+  batch_size: 1                   # per process, per micro-batch; read by the stage entry points that build the loaders
+  num_workers: 4                  # same
+  grad_accum: 8                   # micro-batches per optimiser step; effective batch = batch_size * grad_accum * processes
+  grad_clip: 1.0                  # global-norm clip; 0 disables. Decision: the plan is silent
+  mixed_precision: bf16           # no | bf16 | fp16 - parameters and optimiser state stay float32
+  seed: 1234
+  log_every: 10
+  eval_every: 500
+  save_every: 1000
+  keep_last: 2                    # newest checkpoints kept; 0 keeps all
+infer:                            # dcttgen.infer
+  temperature: 1.0                # 0 = greedy (the plan's argmax); Decision: sample, see chapter 03
+  top_k: 250                      # Decision: a starting point, tune by ear
+  top_p: null
+  steps: null                     # null = rf.decode_steps
+  cfg_scale: null                 # null = rf.decode_cfg
+  dtype: float32                  # dtype of the language model at inference: float32 | bfloat16 | float16
+  max_prompt_chars: 500           # about the 128-token caption cap for English text
+eval:                             # dcttgen.eval.run
+  split: val                      # manifest/<split>.jsonl
+  num_prompts: 0                  # 0 = every clip of the split, else a seeded random subset of this size
+  seconds: 0                      # 0 = each clip's own plan and duration (the plan's protocol); 30..300 = every piece that long
+  plan_mode: given                # given = plan from the manifest row | self = the model writes its own plan (length not controlled)
+  seed: 0                         # clip i is generated with seed + i
+  fd: {channels: 1, sample_rate: 32000, content_type: music, hop: 0.5, batch: 4}   # openl3; Decision: 32 kHz mono, the dataset's own format
+  clap_model: 630k-audioset-fusion-best.pt
+  metrics_repo: third_party/stable-audio-metrics

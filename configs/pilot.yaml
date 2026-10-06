@@ -1,0 +1,5 @@
+# About 20 hours of audio: a scale overlay, combine with a codec overlay: --config configs/bootstrap_k1.yaml,configs/pilot.yaml
+train: {warmup_steps: 50, max_steps: 1000, grad_accum: 4, eval_every: 100, save_every: 250, keep_last: 2}
+rf: {width: 512, depth: 8, heads: 8}
+lm: {max_seconds: 120, max_tokens: 12288}
+eval: {num_prompts: 8, seconds: 30}
