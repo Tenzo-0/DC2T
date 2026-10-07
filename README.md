@@ -10,8 +10,6 @@ and generates a long-form instrumental piece in that style, up to five minutes. 
 
 **Authors:** Tan Duc Nguyen and Nhat Bao Ha, Le Hong Phong High School for the Gifted, Ho Chi Minh City, Vietnam.
 
-> **Status: research code, not a trained model.** Nothing has been trained or run on a GPU yet, and no weights are published. See [What is and isn't here](#what-is-and-isnt-here).
-
 ## How it works
 
 ```
@@ -158,30 +156,6 @@ python -m dc2t.infer --config <config> --stage audio --codes piece.npy --out pie
 ```
 
 Give all four of `--duration`, `--bpm`, `--moods` and `--instruments`, or none of them. With none, the model writes its own plan from the prompt.
-
-## Results
-
-Objective evaluation reported in our research plan, against four baselines trained on the same Đờn ca tài tử data:
-
-| Model | FAD (OpenL3) ↓ | KLD (PaSST) ↓ | CLAP score ↑ |
-|---|---|---|---|
-| MusicLM | 4.023 | 0.822 | 0.305 |
-| MusicGen-Medium | 3.816 | 0.756 | 0.318 |
-| AudioLDM2-Music | 4.041 | 0.793 | 0.346 |
-| Stable Audio Open | 1.378 | 0.519 | **0.410** |
-| **DC2T** | **1.291** | **0.472** | 0.394 |
-
-These numbers come from the research plan. They have not been reproduced with the code in this repository, which has not been trained yet. The runner that computes the three metrics is [dc2t/eval/run.py](dc2t/eval/run.py).
-
-## What is and isn't here
-
-Included: the data pipeline stages, the codec wrapper, the Rectified Flow Transformer and its training module, the language model with both training stages, the trainer, inference, the evaluation runner and the implementation guide.
-
-Not included yet:
-- the Đờn ca tài tử dataset
-- trained DC2T checkpoints
-- the command-line driver that chains the data stages (specified in guide chapter 01, Task 9)
-- any run on a GPU: training on several processes, the real MuCodec weights, and the external data and evaluation tools are untested. The [guide](docs/guide/README.md) lists each with how to check it
 
 ## Acknowledgements and licences
 
