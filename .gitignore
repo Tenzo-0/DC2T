@@ -13,3 +13,6 @@ third_party/stable-audio-metrics/
 __pycache__/
 *.egg-info/
 .pytest_cache/
+
+# the research plan is kept locally, not in the repository
+/Research-Plan-1.pdf
