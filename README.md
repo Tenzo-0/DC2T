@@ -34,7 +34,6 @@ The audio tokenizer builds on [MuCodec](https://github.com/xuyaoxun/MuCodec). Tw
 | `dcttgen/engine.py` | The training loop, with exact resume |
 | `dcttgen/infer.py`, `dcttgen/eval/` | Text to music; FAD / KL / CLAP evaluation |
 | `configs/` | Every setting, with the two codec configurations and a small-scale overlay |
-| `tests/` | 131 CPU tests |
 | `Research-Plan-1.pdf` | The research plan this implements |
 
 ## Third-party components
