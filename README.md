@@ -2,7 +2,7 @@
 
 Text-to-music generation for **Đờn ca tài tử**, the traditional chamber music of Southern Vietnam (UNESCO Intangible Cultural Heritage, 2013).
 
-A text prompt goes in — *"A joyful and uplifting Don ca tai tu piece with fast tempo, performed by zither, two-string fiddle, and moon-shaped lute"* — and a piece of up to five minutes comes out.
+A text prompt goes in like *"A joyful and uplifting Don ca tai tu piece with fast tempo, performed by zither, two-string fiddle, and moon-shaped lute"* and a piece of up to five minutes comes out.
 
 > **Status: research code, not a trained model.** The repository contains the implementation and its test suite. No weights are published, and nothing here has been trained or run on a GPU yet. See [what is verified](#what-is-verified).
 
