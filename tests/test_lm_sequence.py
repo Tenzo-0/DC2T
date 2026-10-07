@@ -1,9 +1,9 @@
 import torch
 from lm_testkit import CAPTION, get_vocab, make_doc, make_plan, raises, run_all
 
-from dcttgen.lm.sequence import (CAPTION_MAX_TOKENS, PLAN_MAX_TOKENS, build_document, doc_length, flatten_c2f, instruct_ids, metadata_ids,
+from dc2t.lm.sequence import (CAPTION_MAX_TOKENS, PLAN_MAX_TOKENS, build_document, doc_length, flatten_c2f, instruct_ids, metadata_ids,
                                  parse_document, unflatten_c2f)
-from dcttgen.plan import INSTRUMENTS, Plan, plan_sections
+from dc2t.plan import INSTRUMENTS, Plan, plan_sections
 
 
 

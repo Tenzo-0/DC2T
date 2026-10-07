@@ -22,7 +22,7 @@ import torch.nn.functional as F
 from scipy.signal import resample_poly
 from torch import Tensor
 
-from dcttgen.codec.rf import (FRAMES_PER_LATENT, LatentNorm, RFConfig, RFTransformer, pair_frames, plan_windows, sample,
+from dc2t.codec.rf import (FRAMES_PER_LATENT, LatentNorm, RFConfig, RFTransformer, pair_frames, plan_windows, sample,
                               sine_window)
 
 VAE_SR = 48000  # Mel-VAE / HiFi-GAN rate (tools/get_melvaehifigan48k.py:1472)
@@ -203,7 +203,7 @@ class Codec:
         if cfg.codec.checkpoint is None:
             if (K, V) != (1, 16384):
                 raise ValueError(f"the released weights are 1 x 16384 but the config asks for {K} x {V}: "
-                                 "train the codec (python -m dcttgen.codec.train) and set codec.checkpoint")
+                                 "train the codec (python -m dc2t.codec.train) and set codec.checkpoint")
             codec = cls(cfg, device, rel)
         else:
             rvq = load_rvq(cfg, rel, cfg.codec.checkpoint).to(device)

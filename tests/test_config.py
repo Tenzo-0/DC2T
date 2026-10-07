@@ -7,7 +7,7 @@ import tempfile
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from dcttgen.config import ROOT, load_config  # noqa: E402
+from dc2t.config import ROOT, load_config  # noqa: E402
 
 BASE = str(ROOT / "configs" / "base.yaml")
 OVERLAYS = ROOT / "configs"

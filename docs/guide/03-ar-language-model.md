@@ -1,4 +1,4 @@
-# DcttGen Implementation Guide — 03. Autoregressive Language Model
+# DC2T Implementation Guide — 03. Autoregressive Language Model
 
 > **For agentic workers:** REQUIRED SUB-SKILL: use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this chapter task by task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -108,13 +108,13 @@ Input and output embeddings are tied (`config.tie_word_embeddings = True`), so t
 
 | File | Responsibility |
 |---|---|
-| `dcttgen/plan.py` | `plan_sections`, `max_clip_seconds` (contract §8.3, unchanged), `Plan` with strict text round trip |
-| `dcttgen/lm/vocab.py` | `Vocab`: tokenizer, the five special ids, audio id arithmetic, safe text encoding, checkpoint guard |
-| `dcttgen/lm/sequence.py` | `flatten_c2f`, `unflatten_c2f`, `build_document`, `doc_length`, `parse_document` |
-| `dcttgen/lm/model.py` | `resize_for_audio`, `restricted_loss`, `MusicLM`, `load_lm` |
-| `dcttgen/lm/data.py` | `ClipDataset`, `collate`, `TokenBudgetSampler` |
-| `dcttgen/lm/generate.py` | `build_schedule`, sampling, `generate_codes` |
-| `dcttgen/lm/train.py` | entry point for both phases; `--probe` |
+| `dc2t/plan.py` | `plan_sections`, `max_clip_seconds` (contract §8.3, unchanged), `Plan` with strict text round trip |
+| `dc2t/lm/vocab.py` | `Vocab`: tokenizer, the five special ids, audio id arithmetic, safe text encoding, checkpoint guard |
+| `dc2t/lm/sequence.py` | `flatten_c2f`, `unflatten_c2f`, `build_document`, `doc_length`, `parse_document` |
+| `dc2t/lm/model.py` | `resize_for_audio`, `restricted_loss`, `MusicLM`, `load_lm` |
+| `dc2t/lm/data.py` | `ClipDataset`, `collate`, `TokenBudgetSampler` |
+| `dc2t/lm/generate.py` | `build_schedule`, sampling, `generate_codes` |
+| `dc2t/lm/train.py` | entry point for both phases; `--probe` |
 | `tests/lm_testkit.py` | shared test helpers: tiny Qwen2, config namespace, synthetic dataset |
 | `tests/test_plan.py`, `tests/test_lm_*.py` | 45 tests |
 
@@ -124,7 +124,7 @@ Every task follows the same five steps. Run a test file either way: `pytest -q t
 
 ### Task 1: sections and the plan text
 
-**Files:** Create `dcttgen/plan.py` · Test `tests/test_plan.py`
+**Files:** Create `dc2t/plan.py` · Test `tests/test_plan.py`
 
 **Interfaces:**
 - Consumes: nothing.
@@ -141,7 +141,7 @@ import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))   # lets `python tests/test_plan.py` run without installing the package
 
-from dcttgen.plan import MIN_CLIP_S, POSITIONS, Plan, max_clip_seconds, plan_sections, validate_sections
+from dc2t.plan import MIN_CLIP_S, POSITIONS, Plan, max_clip_seconds, plan_sections, validate_sections
 
 EXAMPLE = "bpm: 80; duration: 150; sections: [intro] 30, [main] 90, [outro] 30; moods: uplifting, joyful; instruments: zither, two-string fiddle, moon-shaped lute"
 ROW = {"clip_id": "yt_3fA9c_00", "recording_id": "yt_3fA9c", "position": "first", "audio": "audio/yt_3fA9c_00.flac", "duration": 270, "bpm": 80,
@@ -244,10 +244,10 @@ if __name__ == "__main__":
 
 </details>
 
-- [ ] **Step 2: run it, expect failure** — `python tests/test_plan.py` → `ModuleNotFoundError: No module named 'dcttgen.plan'`
+- [ ] **Step 2: run it, expect failure** — `python tests/test_plan.py` → `ModuleNotFoundError: No module named 'dc2t.plan'`
 - [ ] **Step 3: implement.** The first two functions are the contract's code, unchanged. `Plan.__post_init__` enforces every rule of contract §7.2 that concerns plan fields, so *an instance that exists is valid*. `from_text` accepts only the canonical rendering: it parses, rebuilds, and compares with the input, which rejects leading zeros, extra spaces and reordered fields.
 
-**`dcttgen/plan.py`** — 105 lines
+**`dc2t/plan.py`** — 105 lines
 
 ```python
 """Sections and the plan text. The first two functions are contract 8.3, copied unchanged."""
@@ -358,11 +358,11 @@ class Plan:
 ```
 
 - [ ] **Step 4: run it, expect a pass** — `python tests/test_plan.py` → `test_plan: 5 passed`
-- [ ] **Step 5: commit** — `git add dcttgen/plan.py tests/test_plan.py && git commit -m "feat: plan sections and strict plan text"`
+- [ ] **Step 5: commit** — `git add dc2t/plan.py tests/test_plan.py && git commit -m "feat: plan sections and strict plan text"`
 
 ### Task 2: vocabulary
 
-**Files:** Create `dcttgen/lm/__init__.py` (empty), `dcttgen/lm/vocab.py`, `tests/lm_testkit.py` · Test `tests/test_lm_vocab.py`
+**Files:** Create `dc2t/lm/__init__.py` (empty), `dc2t/lm/vocab.py`, `tests/lm_testkit.py` · Test `tests/test_lm_vocab.py`
 
 **Interfaces:**
 - Consumes: `cfg.lm.backbone`, `cfg.codec.num_codebooks`, `cfg.codec.codebook_size`, `cfg.codec.tag`, `cfg.audio.frame_rate`.
@@ -394,9 +394,9 @@ import numpy as np
 import torch
 from transformers import AutoTokenizer, Qwen2Config, Qwen2ForCausalLM
 
-from dcttgen.lm.sequence import build_document
-from dcttgen.lm.vocab import Vocab
-from dcttgen.plan import Plan, plan_sections
+from dc2t.lm.sequence import build_document
+from dc2t.lm.vocab import Vocab
+from dc2t.plan import Plan, plan_sections
 
 CAPTION = "A joyful and uplifting Don ca tai tu piece with fast tempo, performed by zither, two-string fiddle, and moon-shaped lute"
 
@@ -429,7 +429,7 @@ def get_vocab(K=2, V=16, frame_rate=25) -> Vocab:
 
 def random_rows_model(K=2, V=16, frame_rate=1, seed=1):
     """load_lm, then random new rows. At initialisation every row of a codebook is the same, which would make most tests vacuous."""
-    from dcttgen.lm.model import load_lm
+    from dc2t.lm.model import load_lm
     v = get_vocab(K, V, frame_rate)
     model = load_lm(make_cfg(K, V, frame_rate), v)
     torch.manual_seed(seed)
@@ -499,8 +499,8 @@ from lm_testkit import get_vocab, make_cfg, run_all
 
 from transformers import AutoTokenizer
 
-from dcttgen.lm import vocab as vocab_mod
-from dcttgen.lm.vocab import Vocab
+from dc2t.lm import vocab as vocab_mod
+from dc2t.lm.vocab import Vocab
 
 CONTROL_STRINGS = ["<EOA>", "<PLAN>", "<EOD>", "<SOA>", "<INST>", "<|endoftext|>", "<|im_start|>", "a<EOA>b <PLAN> c<|endoftext|>"]
 CAPTIONS = ["A joyful and uplifting Don ca tai tu piece with fast tempo, performed by zither, two-string fiddle, and moon-shaped lute",
@@ -580,10 +580,10 @@ if __name__ == "__main__":
 
 </details>
 
-- [ ] **Step 2: run it, expect failure** — `python tests/test_lm_vocab.py` → `ModuleNotFoundError` (no `dcttgen.lm` module exists yet)
+- [ ] **Step 2: run it, expect failure** — `python tests/test_lm_vocab.py` → `ModuleNotFoundError` (no `dc2t.lm` module exists yet)
 - [ ] **Step 3: implement**
 
-**`dcttgen/lm/vocab.py`** — 76 lines
+**`dc2t/lm/vocab.py`** — 76 lines
 
 ```python
 """Vocabulary layout, contract 8.1: Qwen2.5 tokens, five added special tokens, then K * V audio ids."""
@@ -595,7 +595,7 @@ from pathlib import Path
 
 from transformers import AutoTokenizer
 
-from dcttgen.plan import SECTION_ORDER
+from dc2t.plan import SECTION_ORDER
 
 SPECIALS = ("<EOD>", "<SOA>", "<EOA>", "<INST>", "<PLAN>")             # added in exactly this order
 LAYOUT = {"<EOD>": 151665, "<SOA>": 151666, "<EOA>": 151667, "<INST>": 151668, "<PLAN>": 151669}
@@ -665,11 +665,11 @@ class Vocab:
 ```
 
 - [ ] **Step 4: run it, expect a pass** — the shared test kit imports `sequence.py`, so this test first runs after Task 3's Step 3: `python tests/test_lm_vocab.py` → `test_lm_vocab: 5 passed`
-- [ ] **Step 5: commit** — `git add dcttgen/lm tests/lm_testkit.py tests/test_lm_vocab.py && git commit -m "feat: vocabulary layout with safe text encoding"`
+- [ ] **Step 5: commit** — `git add dc2t/lm tests/lm_testkit.py tests/test_lm_vocab.py && git commit -m "feat: vocabulary layout with safe text encoding"`
 
 ### Task 3: documents
 
-**Files:** Create `dcttgen/lm/sequence.py` · Test `tests/test_lm_sequence.py`
+**Files:** Create `dc2t/lm/sequence.py` · Test `tests/test_lm_sequence.py`
 
 **Interfaces:**
 - Consumes: `Vocab`, `Plan`, `validate_sections`.
@@ -686,9 +686,9 @@ class Vocab:
 import torch
 from lm_testkit import CAPTION, get_vocab, make_doc, make_plan, raises, run_all
 
-from dcttgen.lm.sequence import (CAPTION_MAX_TOKENS, PLAN_MAX_TOKENS, build_document, doc_length, flatten_c2f, instruct_ids, metadata_ids,
+from dc2t.lm.sequence import (CAPTION_MAX_TOKENS, PLAN_MAX_TOKENS, build_document, doc_length, flatten_c2f, instruct_ids, metadata_ids,
                                  parse_document, unflatten_c2f)
-from dcttgen.plan import INSTRUMENTS, Plan, plan_sections
+from dc2t.plan import INSTRUMENTS, Plan, plan_sections
 
 
 
@@ -806,10 +806,10 @@ if __name__ == "__main__":
 
 </details>
 
-- [ ] **Step 2: run it, expect failure** — `python tests/test_lm_sequence.py` → `ModuleNotFoundError: No module named 'dcttgen.lm.sequence'`
+- [ ] **Step 2: run it, expect failure** — `python tests/test_lm_sequence.py` → `ModuleNotFoundError: No module named 'dc2t.lm.sequence'`
 - [ ] **Step 3: implement**
 
-**`dcttgen/lm/sequence.py`** — 111 lines
+**`dc2t/lm/sequence.py`** — 111 lines
 
 ```python
 """Documents, contract 8.2 and 8.4: flatten the code matrix, build a training document, parse one back."""
@@ -817,8 +817,8 @@ from __future__ import annotations
 
 import torch
 
-from dcttgen.lm.vocab import Vocab
-from dcttgen.plan import Plan, validate_sections
+from dc2t.lm.vocab import Vocab
+from dc2t.plan import Plan, validate_sections
 
 CAPTION_MAX_TOKENS = PLAN_MAX_TOKENS = 128          # contract 6: caption and plan text are each capped at 128 tokens
 
@@ -926,11 +926,11 @@ def parse_document(vocab: Vocab, ids) -> dict:
 ```
 
 - [ ] **Step 4: run it, expect a pass** — `python tests/test_lm_sequence.py` → `test_lm_sequence: 10 passed`
-- [ ] **Step 5: commit** — `git add dcttgen/lm/sequence.py tests/test_lm_sequence.py && git commit -m "feat: Music Chain-of-Thought documents"`
+- [ ] **Step 5: commit** — `git add dc2t/lm/sequence.py tests/test_lm_sequence.py && git commit -m "feat: Music Chain-of-Thought documents"`
 
 ### Task 4: the model and its loss
 
-**Files:** Create `dcttgen/lm/model.py` · Test `tests/test_lm_model.py`
+**Files:** Create `dc2t/lm/model.py` · Test `tests/test_lm_model.py`
 
 **Interfaces:**
 - Consumes: `Vocab`; `cfg.lm.backbone`, `cfg.lm.checkpoint`, `cfg.lm.attn`, `cfg.lm.grad_checkpointing`.
@@ -953,10 +953,10 @@ from lm_testkit import CAPTION, backbone_dir, get_vocab, make_cfg, make_doc, rai
 from safetensors.torch import save_file
 from transformers import AutoModelForCausalLM
 
-from dcttgen.lm.data import collate
-from dcttgen.lm.generate import build_schedule
-from dcttgen.lm.model import load_lm, resize_for_audio
-from dcttgen.lm.sequence import instruct_ids, metadata_ids
+from dc2t.lm.data import collate
+from dc2t.lm.generate import build_schedule
+from dc2t.lm.model import load_lm, resize_for_audio
+from dc2t.lm.sequence import instruct_ids, metadata_ids
 
 # K = 2 codebooks of 16 codes at 1 frame per second: a 30 s document has ~250 tokens, so the reference below can afford [B, S, 151,702] logits
 CFG, V = make_cfg(2, 16, 1), get_vocab(2, 16, 1)
@@ -1080,10 +1080,10 @@ if __name__ == "__main__":
 
 </details>
 
-- [ ] **Step 2: run it, expect failure** — `python tests/test_lm_model.py` → `ModuleNotFoundError: No module named 'dcttgen.lm.model'`
+- [ ] **Step 2: run it, expect failure** — `python tests/test_lm_model.py` → `ModuleNotFoundError: No module named 'dc2t.lm.model'`
 - [ ] **Step 3: implement.** `MusicLM.forward` calls the `Qwen2Model` (not the `…ForCausalLM` wrapper), takes the hidden states at positions `0 … S-2` to predict tokens `1 … S-1`, drops the positions whose label is `-100`, and hands the rest to `restricted_loss`.
 
-**`dcttgen/lm/model.py`** — 79 lines
+**`dc2t/lm/model.py`** — 79 lines
 
 ```python
 """The language model: stock Qwen2.5 with an enlarged embedding matrix, and a loss that scores each target only against the rows it may take (D9)."""
@@ -1097,7 +1097,7 @@ from safetensors.torch import load_model
 from torch import nn
 from transformers import AutoModelForCausalLM
 
-from dcttgen.lm.vocab import Vocab
+from dc2t.lm.vocab import Vocab
 
 
 def resize_for_audio(lm, vocab: Vocab) -> None:
@@ -1168,11 +1168,11 @@ def load_lm(cfg, vocab: Vocab, checkpoint: str | None = None) -> MusicLM:
 ```
 
 - [ ] **Step 4: run it, expect a pass** — `python tests/test_lm_model.py` → `test_lm_model: 7 passed`
-- [ ] **Step 5: commit** — `git add dcttgen/lm/model.py tests/test_lm_model.py && git commit -m "feat: Qwen2.5 with audio rows and a restricted loss"`
+- [ ] **Step 5: commit** — `git add dc2t/lm/model.py tests/test_lm_model.py && git commit -m "feat: Qwen2.5 with audio rows and a restricted loss"`
 
 ### Task 5: dataset, collator, token-budget batches
 
-**Files:** Create `dcttgen/lm/data.py` · Test `tests/test_lm_data.py`
+**Files:** Create `dc2t/lm/data.py` · Test `tests/test_lm_data.py`
 
 **Interfaces:**
 - Consumes: `manifest/<split>.jsonl` (contract §7.2), `codes/<tag>/<clip_id>.npy` (contract §7.3), `build_document`, `doc_length`; `cfg.lm.loss_on_plan`, `cfg.lm.max_seconds`.
@@ -1194,9 +1194,9 @@ import numpy as np
 import torch
 from lm_testkit import get_vocab, make_cfg, random_rows_model, raises, run_all, write_dataset
 
-from dcttgen.lm.data import ClipDataset, TokenBudgetSampler, collate
-from dcttgen.lm.sequence import parse_document
-from dcttgen.lm.train import make_loader
+from dc2t.lm.data import ClipDataset, TokenBudgetSampler, collate
+from dc2t.lm.sequence import parse_document
+from dc2t.lm.train import make_loader
 
 K, V, FR = 2, 16, 1                                  # one frame per second keeps the documents small; the code reads it from cfg
 
@@ -1294,10 +1294,10 @@ if __name__ == "__main__":
 
 </details>
 
-- [ ] **Step 2: run it, expect failure** — `python tests/test_lm_data.py` → `ModuleNotFoundError: No module named 'dcttgen.lm.data'`
+- [ ] **Step 2: run it, expect failure** — `python tests/test_lm_data.py` → `ModuleNotFoundError: No module named 'dc2t.lm.data'`
 - [ ] **Step 3: implement**
 
-**`dcttgen/lm/data.py`** — 94 lines
+**`dc2t/lm/data.py`** — 94 lines
 
 ```python
 """Manifest rows + codes/<tag>/<clip_id>.npy -> documents -> padded batches of about `lm.max_tokens` tokens."""
@@ -1311,9 +1311,9 @@ import numpy as np
 import torch
 from torch.utils.data import Dataset
 
-from dcttgen.lm.sequence import build_document, doc_length
-from dcttgen.lm.vocab import Vocab
-from dcttgen.plan import Plan
+from dc2t.lm.sequence import build_document, doc_length
+from dc2t.lm.vocab import Vocab
+from dc2t.plan import Plan
 
 PHASES = ("pretrain", "finetune")
 
@@ -1337,7 +1337,7 @@ class ClipDataset(Dataset):
             raise ValueError(f"no {split} clips for phase {phase} in {root / 'manifest'}")
         missing = [r["clip_id"] for r in rows if not (self.codes_dir / f"{r['clip_id']}.npy").is_file()]
         if missing:
-            raise FileNotFoundError(f"{len(missing)} clips have no codes in {self.codes_dir} (first: {missing[:3]}); run dcttgen.codec.tokenize first")
+            raise FileNotFoundError(f"{len(missing)} clips have no codes in {self.codes_dir} (first: {missing[:3]}); run dc2t.codec.tokenize first")
         self.rows = rows
         self.plans = [Plan.from_manifest(r) for r in rows]
         self.captions = [r["caption"] if self.fine else None for r in rows]
@@ -1397,11 +1397,11 @@ class TokenBudgetSampler:
 ```
 
 - [ ] **Step 4: run it, expect a pass** — `python tests/test_lm_data.py` → `test_lm_data: 6 passed`
-- [ ] **Step 5: commit** — `git add dcttgen/lm/data.py tests/test_lm_data.py && git commit -m "feat: LM dataset with token-budget batches"`
+- [ ] **Step 5: commit** — `git add dc2t/lm/data.py tests/test_lm_data.py && git commit -m "feat: LM dataset with token-budget batches"`
 
 ### Task 6: schedule-constrained decoding
 
-**Files:** Create `dcttgen/lm/generate.py` · Test `tests/test_lm_generate.py`
+**Files:** Create `dc2t/lm/generate.py` · Test `tests/test_lm_generate.py`
 
 **Interfaces:**
 - Consumes: `MusicLM.backbone`, `MusicLM.head_weight`, `Vocab`, `Plan`, `instruct_ids`, `metadata_ids`, `parse_document`.
@@ -1420,10 +1420,10 @@ import torch
 import torch.nn.functional as F
 from lm_testkit import CAPTION, get_vocab, make_doc, make_plan, raises, random_rows_model, run_all
 
-from dcttgen.lm import generate as G
-from dcttgen.lm.generate import build_schedule, generate_codes, range_logits, sample
-from dcttgen.lm.model import load_lm
-from dcttgen.lm.sequence import build_document, instruct_ids, metadata_ids
+from dc2t.lm import generate as G
+from dc2t.lm.generate import build_schedule, generate_codes, range_logits, sample
+from dc2t.lm.model import load_lm
+from dc2t.lm.sequence import build_document, instruct_ids, metadata_ids
 from lm_testkit import make_cfg
 
 
@@ -1546,10 +1546,10 @@ if __name__ == "__main__":
 
 </details>
 
-- [ ] **Step 2: run it, expect failure** — `python tests/test_lm_generate.py` → `ModuleNotFoundError: No module named 'dcttgen.lm.generate'`
+- [ ] **Step 2: run it, expect failure** — `python tests/test_lm_generate.py` → `ModuleNotFoundError: No module named 'dc2t.lm.generate'`
 - [ ] **Step 3: implement**
 
-**`dcttgen/lm/generate.py`** — 117 lines
+**`dc2t/lm/generate.py`** — 117 lines
 
 ```python
 """Decoding, D9 and contract 8.5: every position is sampled from the id range the plan allows; forced tokens are fed, not sampled.
@@ -1561,9 +1561,9 @@ from typing import NamedTuple
 import torch
 import torch.nn.functional as F
 
-from dcttgen.lm.sequence import PLAN_MAX_TOKENS, instruct_ids, metadata_ids, parse_document
-from dcttgen.lm.vocab import Vocab
-from dcttgen.plan import Plan
+from dc2t.lm.sequence import PLAN_MAX_TOKENS, instruct_ids, metadata_ids, parse_document
+from dc2t.lm.vocab import Vocab
+from dc2t.plan import Plan
 
 PLAN_ATTEMPTS = 8                                  # how often the model may write an invalid plan before generate_codes gives up
 
@@ -1672,15 +1672,15 @@ def generate_codes(model, vocab: Vocab, caption: str, plan: Plan | None = None, 
 ```
 
 - [ ] **Step 4: run it, expect a pass** — `python tests/test_lm_generate.py` → `test_lm_generate: 9 passed`
-- [ ] **Step 5: commit** — `git add dcttgen/lm/generate.py tests/test_lm_generate.py && git commit -m "feat: schedule-constrained decoding"`
+- [ ] **Step 5: commit** — `git add dc2t/lm/generate.py tests/test_lm_generate.py && git commit -m "feat: schedule-constrained decoding"`
 
 ### Task 7: the training entry point
 
-**Files:** Create `dcttgen/lm/train.py` · Test `tests/test_lm_train.py`
+**Files:** Create `dc2t/lm/train.py` · Test `tests/test_lm_train.py`
 
 **Interfaces:**
 - Consumes: `load_config` and `fit` (chapter 04), everything above; `cfg.lm.max_tokens`, `cfg.lm.num_workers`, `cfg.paths.runs`.
-- Produces: `python -m dcttgen.lm.train --config C --phase pretrain|finetune [--override a.b=value …] [--name N] [--probe]`. Run directory: `runs/lm_<phase>/<name>/` containing `tokenizer/`, `vocab.json`, and the engine's `step_*/`, `log.jsonl`, `config.yaml`.
+- Produces: `python -m dc2t.lm.train --config C --phase pretrain|finetune [--override a.b=value …] [--name N] [--probe]`. Run directory: `runs/lm_<phase>/<name>/` containing `tokenizer/`, `vocab.json`, and the engine's `step_*/`, `log.jsonl`, `config.yaml`.
 
 - [ ] **Step 1: write the failing test** (it stands in for chapter 04's `load_config` and `fit`; the real pair is exercised by `tests/test_integration.py` in chapter 04)
 
@@ -1701,11 +1701,11 @@ import torch
 from lm_testkit import get_vocab, make_cfg, random_rows_model, run_all, write_dataset
 from safetensors.torch import load_file, save_file
 
-from dcttgen.lm import train as T
+from dc2t.lm import train as T
 
 
 def fake_chapter_04(root, runs, calls):
-    """Stand-ins for dcttgen.config.load_config and dcttgen.engine.fit, which chapter 04 owns."""
+    """Stand-ins for dc2t.config.load_config and dc2t.engine.fit, which chapter 04 owns."""
     def load_config(path, overrides):
         cfg = make_cfg(2, 16, 1, data_root=str(root))
         cfg.paths.runs = str(runs)
@@ -1737,7 +1737,7 @@ def fake_chapter_04(root, runs, calls):
         step.mkdir(parents=True)
         save_file({k: t.contiguous() for k, t in model.state_dict().items() if k != "lm.lm_head.weight"}, str(step / "model.safetensors"))
 
-    return {"dcttgen.config": types.SimpleNamespace(load_config=load_config), "dcttgen.engine": types.SimpleNamespace(fit=fit)}
+    return {"dc2t.config": types.SimpleNamespace(load_config=load_config), "dc2t.engine": types.SimpleNamespace(fit=fit)}
 
 
 def test_main_runs_both_phases_and_the_weights_carry_over():
@@ -1782,13 +1782,13 @@ if __name__ == "__main__":
 
 </details>
 
-- [ ] **Step 2: run it, expect failure** — `python tests/test_lm_train.py` → `ImportError: cannot import name 'train' from 'dcttgen.lm'`
+- [ ] **Step 2: run it, expect failure** — `python tests/test_lm_train.py` → `ImportError: cannot import name 'train' from 'dc2t.lm'`
 - [ ] **Step 3: implement**
 
-**`dcttgen/lm/train.py`** — 82 lines
+**`dc2t/lm/train.py`** — 82 lines
 
 ```python
-"""python -m dcttgen.lm.train --config C --phase pretrain|finetune [--override a.b=value ...] [--name N] [--probe]
+"""python -m dc2t.lm.train --config C --phase pretrain|finetune [--override a.b=value ...] [--name N] [--probe]
 
 Builds the vocabulary, the model and the two loaders, then hands them to the engine's fit() (chapter 04). Nothing here trains by itself."""
 from __future__ import annotations
@@ -1802,11 +1802,11 @@ from pathlib import Path
 import torch
 from torch.utils.data import DataLoader
 
-from dcttgen.lm.data import PHASES, ClipDataset, TokenBudgetSampler, collate
-from dcttgen.lm.model import load_lm
-from dcttgen.lm.sequence import build_document
-from dcttgen.lm.vocab import Vocab
-from dcttgen.plan import INSTRUMENTS, Plan, plan_sections
+from dc2t.lm.data import PHASES, ClipDataset, TokenBudgetSampler, collate
+from dc2t.lm.model import load_lm
+from dc2t.lm.sequence import build_document
+from dc2t.lm.vocab import Vocab
+from dc2t.plan import INSTRUMENTS, Plan, plan_sections
 
 
 def make_loader(cfg, vocab: Vocab, split: str, phase: str, shuffle: bool) -> DataLoader:
@@ -1849,8 +1849,8 @@ def main(argv=None) -> None:
     ap.add_argument("--name", help="run directory name; default <codec.tag>-<backbone>")
     ap.add_argument("--probe", action="store_true", help="time one training step on a synthetic 300 s document and exit")
     args = ap.parse_args(argv)
-    from dcttgen.config import load_config      # chapter 04
-    from dcttgen.engine import fit              # chapter 04
+    from dc2t.config import load_config      # chapter 04
+    from dc2t.engine import fit              # chapter 04
     cfg = load_config(args.config, args.override)
     vocab = Vocab.build(cfg)
     model = load_lm(cfg, vocab)
@@ -1873,7 +1873,7 @@ if __name__ == "__main__":
 ```
 
 - [ ] **Step 4: run it, expect a pass** — `python tests/test_lm_train.py` → `test_lm_train: 3 passed`
-- [ ] **Step 5: commit** — `git add dcttgen/lm/train.py tests/test_lm_train.py && git commit -m "feat: LM training entry point for both phases"`
+- [ ] **Step 5: commit** — `git add dc2t/lm/train.py tests/test_lm_train.py && git commit -m "feat: LM training entry point for both phases"`
 
 ## 4. Running it
 
@@ -1881,13 +1881,13 @@ All commands run in the language-model environment (chapter 04). `C` is a comma-
 
 ```bash
 # 0. how fast and how large is one training step on this GPU?  (synthetic 300 s document; nothing is trained)
-python -m dcttgen.lm.train --config configs/plan_k4.yaml --phase pretrain --probe
+python -m dc2t.lm.train --config configs/plan_k4.yaml --phase pretrain --probe
 
 # 1. phase 1 - pre-training on audio tokens only (plan 3.6)
-accelerate launch -m dcttgen.lm.train --config configs/plan_k4.yaml --phase pretrain
+accelerate launch -m dc2t.lm.train --config configs/plan_k4.yaml --phase pretrain
 
 # 2. phase 2 - fine-tuning with caption and plan, starting from the pre-training checkpoint
-accelerate launch -m dcttgen.lm.train --config configs/plan_k4.yaml --phase finetune \
+accelerate launch -m dc2t.lm.train --config configs/plan_k4.yaml --phase finetune \
     --override lm.checkpoint=runs/lm_pretrain/k4v10000-qwen2.5-0.5b/step_0020000
 ```
 
@@ -1924,7 +1924,7 @@ With the bootstrap codec a 120 s clip is 3,000 audio tokens, which trains on a s
 | Symptom | Cause | Fix |
 |---|---|---|
 | `AssertionError: token layout … differs from contract 8.1` | another tokenizer, or the five tokens were added in another order | use a Qwen2.5 tokenizer; never reorder `SPECIALS` |
-| `N clips have no codes in data/codes/<tag>` | the dataset was not tokenised with this `codec.tag` | run `python -m dcttgen.codec.tokenize` (chapter 02) |
+| `N clips have no codes in data/codes/<tag>` | the dataset was not tokenised with this `codec.tag` | run `python -m dc2t.codec.tokenize` (chapter 02) |
 | `codes are int16(4, 3751), expected …(4, 3750)` | the codec returned one frame too many, or the clip is not a whole number of seconds | fix upstream: contract §7.1 and §7.3 are exact |
 | `checkpoint … was trained with {…}, but the config now says {…}` | `codec.tag`, K, V or the frame rate changed since training | restore the config, or retrain: tokens of two RVQs are not interchangeable |
 | `the longest document has N tokens but … positions only 32768` | `Qwen2.5-0.5B` has 32,768 positions; a long caption plus a 300 s clip fits, anything larger does not | set `lm.max_seconds`, or use the 1.5B backbone (131,072 positions) |

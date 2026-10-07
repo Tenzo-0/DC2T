@@ -3,8 +3,8 @@ from __future__ import annotations
 
 import torch
 
-from dcttgen.lm.vocab import Vocab
-from dcttgen.plan import Plan, validate_sections
+from dc2t.lm.vocab import Vocab
+from dc2t.plan import Plan, validate_sections
 
 CAPTION_MAX_TOKENS = PLAN_MAX_TOKENS = 128          # contract 6: caption and plan text are each capped at 128 tokens
 

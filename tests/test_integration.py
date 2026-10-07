@@ -11,12 +11,12 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import torch
 from lm_testkit import backbone_dir, write_dataset
 
-from dcttgen.config import ROOT, load_config
-from dcttgen.lm.generate import generate_codes
-from dcttgen.lm.model import load_lm
-from dcttgen.lm.train import main as train_lm
-from dcttgen.lm.vocab import Vocab
-from dcttgen.plan import Plan, plan_sections
+from dc2t.config import ROOT, load_config
+from dc2t.lm.generate import generate_codes
+from dc2t.lm.model import load_lm
+from dc2t.lm.train import main as train_lm
+from dc2t.lm.vocab import Vocab
+from dc2t.plan import Plan, plan_sections
 
 
 def test_train_checkpoint_resume_reload_generate():

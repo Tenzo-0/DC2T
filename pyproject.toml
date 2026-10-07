@@ -3,9 +3,9 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "dcttgen"
+name = "dc2t"
 version = "0.1.0"
-description = "DcttGen: text-to-music for Don ca tai tu"
+description = "DC2T: text-to-music for Don ca tai tu"
 requires-python = ">=3.10"
 # Only what every environment needs. transformers is NOT here: the language-model environment uses 4.57.1, the codec environment keeps MuCodec's pin.
 dependencies = [
@@ -22,7 +22,7 @@ lm = ["transformers==4.57.1"]
 dev = ["pytest"]
 
 [tool.setuptools.packages.find]
-include = ["dcttgen*"]
+include = ["dc2t*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

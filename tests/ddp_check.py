@@ -15,7 +15,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from test_engine import TinyLM, cfg_for, loader  # noqa: E402
 
-from dcttgen.engine import fit, latest_checkpoint  # noqa: E402
+from dc2t.engine import fit, latest_checkpoint  # noqa: E402
 
 
 class Stop(Exception):
@@ -64,7 +64,7 @@ def worker(rank, world, store, shared):
 
 
 if __name__ == "__main__":
-    shared = Path(tempfile.gettempdir()) / "dcttgen_ddp_check"
+    shared = Path(tempfile.gettempdir()) / "dc2t_ddp_check"
     shutil.rmtree(shared, ignore_errors=True)
     shared.mkdir()
     mp.spawn(worker, args=(2, (shared / "store").as_uri(), str(shared)), nprocs=2)

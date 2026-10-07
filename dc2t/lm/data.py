@@ -9,9 +9,9 @@ import numpy as np
 import torch
 from torch.utils.data import Dataset
 
-from dcttgen.lm.sequence import build_document, doc_length
-from dcttgen.lm.vocab import Vocab
-from dcttgen.plan import Plan
+from dc2t.lm.sequence import build_document, doc_length
+from dc2t.lm.vocab import Vocab
+from dc2t.plan import Plan
 
 PHASES = ("pretrain", "finetune")
 
@@ -35,7 +35,7 @@ class ClipDataset(Dataset):
             raise ValueError(f"no {split} clips for phase {phase} in {root / 'manifest'}")
         missing = [r["clip_id"] for r in rows if not (self.codes_dir / f"{r['clip_id']}.npy").is_file()]
         if missing:
-            raise FileNotFoundError(f"{len(missing)} clips have no codes in {self.codes_dir} (first: {missing[:3]}); run dcttgen.codec.tokenize first")
+            raise FileNotFoundError(f"{len(missing)} clips have no codes in {self.codes_dir} (first: {missing[:3]}); run dc2t.codec.tokenize first")
         self.rows = rows
         self.plans = [Plan.from_manifest(r) for r in rows]
         self.captions = [r["caption"] if self.fine else None for r in rows]

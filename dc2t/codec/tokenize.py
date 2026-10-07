@@ -1,4 +1,4 @@
-"""python -m dcttgen.codec.tokenize --config C [--override a.b=value ...] [--shard i/n]
+"""python -m dc2t.codec.tokenize --config C [--override a.b=value ...] [--shard i/n]
 
 Writes data/codes/<codec.tag>/<clip_id>.npy (contract 7.3) for every clip of manifest/all.jsonl.
 Safe to re-run (finished clips are skipped) and to run as n shards at once, one per GPU: --shard 0/8 ... --shard 7/8."""
@@ -12,7 +12,7 @@ from pathlib import Path
 import numpy as np
 import torch
 
-from dcttgen.codec.codec import claim_tag_dir
+from dc2t.codec.codec import claim_tag_dir
 
 
 def tokenize(cfg, codec, rows, read_audio, shard: tuple[int, int] = (0, 1)) -> tuple[int, int]:
@@ -51,8 +51,8 @@ def main(argv=None) -> None:
     ap.add_argument("--shard", default="0/1", help="i/n: process every n-th clip starting at i")
     args = ap.parse_args(argv)
     import soundfile as sf
-    from dcttgen.codec.codec import Codec
-    from dcttgen.config import load_config      # chapter 04
+    from dc2t.codec.codec import Codec
+    from dc2t.config import load_config      # chapter 04
     cfg = load_config(args.config, args.override)
     i, n = (int(x) for x in args.shard.split("/"))
     if not 0 <= i < n:

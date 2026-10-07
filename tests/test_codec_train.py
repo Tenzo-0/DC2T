@@ -12,8 +12,8 @@ import torch
 import torch.nn.functional as F
 from torch import nn
 
-from dcttgen.codec.tokenize import tokenize
-from dcttgen.codec.train import CodecTrainer, fit_latent_norm
+from dc2t.codec.tokenize import tokenize
+from dc2t.codec.train import CodecTrainer, fit_latent_norm
 
 ns = types.SimpleNamespace
 K, V, W = 2, 8, 8  # codebooks, codebook size, code frames per window

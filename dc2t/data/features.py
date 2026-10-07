@@ -2,7 +2,7 @@
 functions applied to the outputs of Essentia's models (embed.py), so they run and are tested without TensorFlow."""
 import numpy as np
 
-from dcttgen.data.vocab import MOOD_VOTES
+from dc2t.data.vocab import MOOD_VOTES
 
 
 def fold_bpm(bpm: float, lo: float = 40.0, hi: float = 200.0) -> float:

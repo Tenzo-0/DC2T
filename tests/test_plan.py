@@ -3,7 +3,7 @@ import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))   # lets `python tests/test_plan.py` run without installing the package
 
-from dcttgen.plan import MIN_CLIP_S, POSITIONS, Plan, max_clip_seconds, plan_sections, validate_sections
+from dc2t.plan import MIN_CLIP_S, POSITIONS, Plan, max_clip_seconds, plan_sections, validate_sections
 
 EXAMPLE = "bpm: 80; duration: 150; sections: [intro] 30, [main] 90, [outro] 30; moods: uplifting, joyful; instruments: zither, two-string fiddle, moon-shaped lute"
 ROW = {"clip_id": "yt_3fA9c_00", "recording_id": "yt_3fA9c", "position": "first", "audio": "audio/yt_3fA9c_00.flac", "duration": 270, "bpm": 80,

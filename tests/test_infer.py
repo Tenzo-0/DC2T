@@ -9,11 +9,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import numpy as np
 import torch
 
-import dcttgen.infer as infer
-import dcttgen.lm.generate as lm_generate
-from dcttgen.config import ROOT, load_config
-from dcttgen.eval.run import centre, eval_plan, make_audio, make_codes, score, select
-from dcttgen.plan import Plan, plan_sections
+import dc2t.infer as infer
+import dc2t.lm.generate as lm_generate
+from dc2t.config import ROOT, load_config
+from dc2t.eval.run import centre, eval_plan, make_audio, make_codes, score, select
+from dc2t.plan import Plan, plan_sections
 
 K, V = 4, 10000
 CALLS = []

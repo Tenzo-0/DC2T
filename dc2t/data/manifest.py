@@ -1,6 +1,6 @@
 """The manifest (contract 7.2): assemble the rows, enforce every rule, split by recording, write the three files, report.
 
-python -m dcttgen.data.manifest --config C      validates manifest/all.jsonl and the audio files; exit code 0 = milestone M1 is met
+python -m dc2t.data.manifest --config C      validates manifest/all.jsonl and the audio files; exit code 0 = milestone M1 is met
 """
 import argparse
 import hashlib
@@ -9,9 +9,9 @@ import re
 from collections import Counter
 from pathlib import Path
 
-from dcttgen.data.common import read_jsonl, write_jsonl
-from dcttgen.data.vocab import MOODS
-from dcttgen.plan import MIN_CLIP_S, POSITIONS, Plan, max_clip_seconds, plan_sections
+from dc2t.data.common import read_jsonl, write_jsonl
+from dc2t.data.vocab import MOODS
+from dc2t.plan import MIN_CLIP_S, POSITIONS, Plan, max_clip_seconds, plan_sections
 
 FIELDS = ("clip_id", "recording_id", "position", "audio", "duration", "bpm", "moods", "instruments", "sections", "caption", "split")
 CLIP_ID = re.compile(r"[A-Za-z0-9_]+")
@@ -157,7 +157,7 @@ def main(argv=None) -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--config", required=True)
     args = ap.parse_args(argv)
-    from dcttgen.config import load_config      # chapter 04
+    from dc2t.config import load_config      # chapter 04
     cfg = load_config(args.config)
     rows = read_jsonl(Path(cfg.paths.data_root) / "manifest" / "all.jsonl")
     problems = validate_manifest(rows, cfg.paths.data_root, cfg.audio.sample_rate)

@@ -7,8 +7,8 @@ from pathlib import Path
 
 import numpy as np
 
-from dcttgen.data.clips import boundary_costs, clip_count, cut_recording, plan_clips, positions
-from dcttgen.plan import MIN_CLIP_S, max_clip_seconds
+from dc2t.data.clips import boundary_costs, clip_count, cut_recording, plan_clips, positions
+from dc2t.plan import MIN_CLIP_S, max_clip_seconds
 
 try:
     import soundfile as sf

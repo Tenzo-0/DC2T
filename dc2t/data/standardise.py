@@ -8,7 +8,7 @@ import numpy as np
 import soundfile as sf
 import soxr
 
-from dcttgen.data.common import fingerprint, load_marker, save_marker, tmp_name
+from dc2t.data.common import fingerprint, load_marker, save_marker, tmp_name
 
 
 def decode(path) -> tuple[np.ndarray, int, str]:

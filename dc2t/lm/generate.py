@@ -7,9 +7,9 @@ from typing import NamedTuple
 import torch
 import torch.nn.functional as F
 
-from dcttgen.lm.sequence import PLAN_MAX_TOKENS, instruct_ids, metadata_ids, parse_document
-from dcttgen.lm.vocab import Vocab
-from dcttgen.plan import Plan
+from dc2t.lm.sequence import PLAN_MAX_TOKENS, instruct_ids, metadata_ids, parse_document
+from dc2t.lm.vocab import Vocab
+from dc2t.plan import Plan
 
 PLAN_ATTEMPTS = 8                                  # how often the model may write an invalid plan before generate_codes gives up
 

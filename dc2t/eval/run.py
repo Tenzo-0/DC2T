@@ -1,4 +1,4 @@
-"""python -m dcttgen.eval.run --config C --out runs/eval/NAME --stage codes|audio|score [--override a.b=value ...]
+"""python -m dc2t.eval.run --config C --out runs/eval/NAME --stage codes|audio|score [--override a.b=value ...]
 
 codes (language-model environment): one code matrix per validation prompt -> OUT/codes/<clip_id>.npy, and OUT/prompts.json
 audio (codec environment):          OUT/gen/<clip_id>.wav from those codes, and the reference clips -> OUT/ref/<clip_id>.wav
@@ -15,7 +15,7 @@ from pathlib import Path
 
 import numpy as np
 
-from dcttgen.plan import Plan, plan_sections
+from dc2t.plan import Plan, plan_sections
 
 
 def select(rows: list[dict], n: int, seed: int) -> list[dict]:
@@ -124,16 +124,16 @@ def main(argv=None) -> None:
     ap.add_argument("--stage", required=True, choices=("codes", "audio", "score"))
     ap.add_argument("--override", action="append", default=[], metavar="a.b=value")
     args = ap.parse_args(argv)
-    from dcttgen.config import load_config
+    from dc2t.config import load_config
     cfg = load_config(args.config, args.override)
     if args.stage == "score":
         print(json.dumps(score(cfg, args.out), indent=1))
     elif args.stage == "codes":
-        from dcttgen.infer import prompt_to_codes
+        from dc2t.infer import prompt_to_codes
         print(f"generated {make_codes(cfg, args.out, prompt_to_codes)} code files in {args.out}/codes")
     else:
         import soundfile as sf
-        from dcttgen.infer import codes_to_wav
+        from dc2t.infer import codes_to_wav
         read = lambda path: sf.read(str(path), dtype="float32")
         write = lambda path, wav, sr: sf.write(str(path), wav.numpy() if hasattr(wav, "numpy") else wav, sr, subtype="PCM_16")
         print(f"decoded {make_audio(cfg, args.out, codes_to_wav, read, write)} pieces into {args.out}/gen")

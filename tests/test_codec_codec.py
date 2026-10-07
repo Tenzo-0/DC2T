@@ -1,4 +1,4 @@
-"""CPU tests for dcttgen.codec.codec: exact lengths, windows, fingerprint. The released stack is replaced by a fake that has the
+"""CPU tests for dc2t.codec.codec: exact lengths, windows, fingerprint. The released stack is replaced by a fake that has the
 same shapes and the same quirks (T+1 frames, stereo output, one sample short, a crash length). No third_party, no checkpoints.
 Run:  pytest -q tests/test_codec_codec.py     or     python tests/test_codec_codec.py
 """
@@ -12,8 +12,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import torch
 from torch import nn
 
-from dcttgen.codec.codec import VAE_FRAME, Codec, claim_tag_dir, rvq_fingerprint, tile_windows, to_rate
-from dcttgen.codec.rf import LatentNorm, RFConfig, RFTransformer
+from dc2t.codec.codec import VAE_FRAME, Codec, claim_tag_dir, rvq_fingerprint, tile_windows, to_rate
+from dc2t.codec.rf import LatentNorm, RFConfig, RFTransformer
 
 ns = types.SimpleNamespace
 K4, V4 = 4, 50  # a tiny plan-path codebook; nothing in the code may assume 4 x 10000

@@ -4,8 +4,8 @@ import tempfile
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from dcttgen.data.common import read_jsonl  # noqa: E402
-from dcttgen.data.manifest import build_rows, report, split_of, validate_manifest, validate_row, write_manifests  # noqa: E402
+from dc2t.data.common import read_jsonl  # noqa: E402
+from dc2t.data.manifest import build_rows, report, split_of, validate_manifest, validate_row, write_manifests  # noqa: E402
 
 CAPTION = "A joyful and uplifting Don ca tai tu piece with fast tempo, performed by zither, two-string fiddle, and moon-shaped lute"
 

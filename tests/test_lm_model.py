@@ -9,10 +9,10 @@ from lm_testkit import CAPTION, backbone_dir, get_vocab, make_cfg, make_doc, rai
 from safetensors.torch import save_file
 from transformers import AutoModelForCausalLM
 
-from dcttgen.lm.data import collate
-from dcttgen.lm.generate import build_schedule
-from dcttgen.lm.model import load_lm, resize_for_audio
-from dcttgen.lm.sequence import instruct_ids, metadata_ids
+from dc2t.lm.data import collate
+from dc2t.lm.generate import build_schedule
+from dc2t.lm.model import load_lm, resize_for_audio
+from dc2t.lm.sequence import instruct_ids, metadata_ids
 
 # K = 2 codebooks of 16 codes at 1 frame per second: a 30 s document has ~250 tokens, so the reference below can afford [B, S, 151,702] logits
 CFG, V = make_cfg(2, 16, 1), get_vocab(2, 16, 1)

@@ -1,4 +1,4 @@
-"""python -m dcttgen.lm.train --config C --phase pretrain|finetune [--override a.b=value ...] [--name N] [--probe]
+"""python -m dc2t.lm.train --config C --phase pretrain|finetune [--override a.b=value ...] [--name N] [--probe]
 
 Builds the vocabulary, the model and the two loaders, then hands them to the engine's fit() (chapter 04). Nothing here trains by itself."""
 from __future__ import annotations
@@ -12,11 +12,11 @@ from pathlib import Path
 import torch
 from torch.utils.data import DataLoader
 
-from dcttgen.lm.data import PHASES, ClipDataset, TokenBudgetSampler, collate
-from dcttgen.lm.model import load_lm
-from dcttgen.lm.sequence import build_document
-from dcttgen.lm.vocab import Vocab
-from dcttgen.plan import INSTRUMENTS, Plan, plan_sections
+from dc2t.lm.data import PHASES, ClipDataset, TokenBudgetSampler, collate
+from dc2t.lm.model import load_lm
+from dc2t.lm.sequence import build_document
+from dc2t.lm.vocab import Vocab
+from dc2t.plan import INSTRUMENTS, Plan, plan_sections
 
 
 def make_loader(cfg, vocab: Vocab, split: str, phase: str, shuffle: bool) -> DataLoader:
@@ -59,8 +59,8 @@ def main(argv=None) -> None:
     ap.add_argument("--name", help="run directory name; default <codec.tag>-<backbone>")
     ap.add_argument("--probe", action="store_true", help="time one training step on a synthetic 300 s document and exit")
     args = ap.parse_args(argv)
-    from dcttgen.config import load_config      # chapter 04
-    from dcttgen.engine import fit              # chapter 04
+    from dc2t.config import load_config      # chapter 04
+    from dc2t.engine import fit              # chapter 04
     cfg = load_config(args.config, args.override)
     vocab = Vocab.build(cfg)
     model = load_lm(cfg, vocab)

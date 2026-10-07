@@ -1,4 +1,4 @@
-# data, runs, weights and secrets never go into git (leading slash: top level only, so dcttgen/data/ stays tracked)
+# data, runs, weights and secrets never go into git (leading slash: top level only, so dc2t/data/ stays tracked)
 /data/
 /runs/
 third_party/MuCodec/

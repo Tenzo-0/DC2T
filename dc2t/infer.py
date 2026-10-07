@@ -1,6 +1,6 @@
-"""python -m dcttgen.infer --config C --prompt "..." --out out.wav [--duration S --bpm N --moods a,b --instruments "x,y"] [--seed N]
-python -m dcttgen.infer --config C --prompt "..." --out piece.npy --stage codes     (language-model environment)
-python -m dcttgen.infer --config C --codes piece.npy --out out.wav --stage audio    (codec environment)
+"""python -m dc2t.infer --config C --prompt "..." --out out.wav [--duration S --bpm N --moods a,b --instruments "x,y"] [--seed N]
+python -m dc2t.infer --config C --prompt "..." --out piece.npy --stage codes     (language-model environment)
+python -m dc2t.infer --config C --codes piece.npy --out out.wav --stage audio    (codec environment)
 
 Text -> music in two steps: prompt_to_codes (chapter 03's generate_codes) and codes_to_wav (chapter 02's Codec.decode).
 The steps can run in different Python environments, because MuCodec and the language model need different library versions."""
@@ -11,7 +11,7 @@ import argparse
 import numpy as np
 import torch
 
-from dcttgen.plan import Plan, plan_sections
+from dc2t.plan import Plan, plan_sections
 
 _LOADED: dict = {}
 
@@ -29,8 +29,8 @@ def _device() -> torch.device:
 def load_lm_side(cfg):
     """(vocab, model), loaded once per process. Needs the language-model environment."""
     def make():
-        from dcttgen.lm.model import load_lm
-        from dcttgen.lm.vocab import Vocab
+        from dc2t.lm.model import load_lm
+        from dc2t.lm.vocab import Vocab
         if not cfg.lm.checkpoint:
             raise ValueError("lm.checkpoint is not set: there is no trained language model to generate with")
         vocab = Vocab.build(cfg)
@@ -41,7 +41,7 @@ def load_lm_side(cfg):
 def load_codec(cfg):
     """The codec with its decoder, loaded once per process. Needs the codec environment."""
     def make():
-        from dcttgen.codec.codec import Codec
+        from dc2t.codec.codec import Codec
         return Codec.load(cfg, _device(), encoder=False)
     return _once(("codec", id(cfg)), make)
 
@@ -74,7 +74,7 @@ def prompt_to_codes(prompt: str, cfg, *, duration: int | None = None, bpm: int |
     """-> (the plan that was used, codes Long[K, 25 * plan.duration])."""
     caption = clean_prompt(prompt, cfg.infer.max_prompt_chars)
     plan = make_plan(duration, bpm, moods, instruments)          # everything is validated before any model is loaded
-    from dcttgen.lm import generate as lm_generate               # imported here so that the codec environment never imports it
+    from dc2t.lm import generate as lm_generate               # imported here so that the codec environment never imports it
     vocab, model = load_lm_side(cfg)
     i = cfg.infer
     return lm_generate.generate_codes(model, vocab, caption, plan, temperature=i.temperature, top_k=i.top_k, top_p=i.top_p, seed=seed)
@@ -107,7 +107,7 @@ def main(argv=None) -> None:
     ap.add_argument("--seed", type=int)
     ap.add_argument("--override", action="append", default=[], metavar="a.b=value")
     args = ap.parse_args(argv)
-    from dcttgen.config import load_config
+    from dc2t.config import load_config
     cfg = load_config(args.config, args.override)
     items = lambda s: None if s is None else [x.strip() for x in s.split(",") if x.strip()]
     if args.stage == "audio":

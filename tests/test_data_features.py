@@ -4,8 +4,8 @@ import sys
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))   # lets `python tests/test_x.py` run without installing the package
 import numpy as np
 
-from dcttgen.data.features import bpm_and_confidence, clip_patches, fold_bpm, pick_moods, vocal_fraction
-from dcttgen.data.vocab import MOOD_VOTES, MOODS
+from dc2t.data.features import bpm_and_confidence, clip_patches, fold_bpm, pick_moods, vocal_fraction
+from dc2t.data.vocab import MOOD_VOTES, MOODS
 
 # The 56 classes of mtg_jamendo_moodtheme-discogs-effnet-1, copied from the "classes" list of its JSON file
 # (https://essentia.upf.edu/models/classification-heads/mtg_jamendo_moodtheme/mtg_jamendo_moodtheme-discogs-effnet-1.json)

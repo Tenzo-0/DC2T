@@ -6,9 +6,9 @@ import numpy as np
 import torch
 from lm_testkit import get_vocab, make_cfg, random_rows_model, raises, run_all, write_dataset
 
-from dcttgen.lm.data import ClipDataset, TokenBudgetSampler, collate
-from dcttgen.lm.sequence import parse_document
-from dcttgen.lm.train import make_loader
+from dc2t.lm.data import ClipDataset, TokenBudgetSampler, collate
+from dc2t.lm.sequence import parse_document
+from dc2t.lm.train import make_loader
 
 K, V, FR = 2, 16, 1                                  # one frame per second keeps the documents small; the code reads it from cfg
 

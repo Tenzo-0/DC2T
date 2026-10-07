@@ -23,13 +23,13 @@ audio ──► MuCodec encoder + RVQ ─────┘    (Qwen 2.5)          
 
 | Component | What it does | Code |
 |---|---|---|
-| Text tokenizer | Qwen 2.5 byte-level BPE, extended with five special tokens: `<INST>`, `<PLAN>`, `<SOA>`, `<EOA>`, `<EOD>`. Section labels such as `[intro]` stay plain text | [dcttgen/lm/vocab.py](dcttgen/lm/vocab.py) |
-| Audio tokenizer | A wrapper around [MuCodec](https://github.com/xuyaoxun/MuCodec): 32 kHz mono audio to discrete codes at 25 frames per second, and back. Two configurations: the released weights (1 codebook of 16,384), or our own quantiser (4 codebooks of 10,000) | [dcttgen/codec/codec.py](dcttgen/codec/codec.py) |
-| Rectified Flow Transformer | Turns codes into Mel-VAE latents; replaces MuCodec's flow-matching decoder in the 4-codebook configuration | [dcttgen/codec/rf.py](dcttgen/codec/rf.py), [train.py](dcttgen/codec/train.py) |
-| Autoregressive language model | Pre-trained Qwen 2.5 with the embedding matrix enlarged by the audio codes, trained with next-token prediction | [dcttgen/lm/model.py](dcttgen/lm/model.py) |
-| Documents and decoding | Build the training sequences for both stages; decode under a schedule derived from the plan | [sequence.py](dcttgen/lm/sequence.py), [generate.py](dcttgen/lm/generate.py) |
-| Data pipeline | Raw recordings to clean clips and a validated manifest | [dcttgen/data/](dcttgen/data/) |
-| Trainer | One training loop on Hugging Face Accelerate, with checkpointing and exact resume | [dcttgen/engine.py](dcttgen/engine.py) |
+| Text tokenizer | Qwen 2.5 byte-level BPE, extended with five special tokens: `<INST>`, `<PLAN>`, `<SOA>`, `<EOA>`, `<EOD>`. Section labels such as `[intro]` stay plain text | [dc2t/lm/vocab.py](dc2t/lm/vocab.py) |
+| Audio tokenizer | A wrapper around [MuCodec](https://github.com/xuyaoxun/MuCodec): 32 kHz mono audio to discrete codes at 25 frames per second, and back. Two configurations: the released weights (1 codebook of 16,384), or our own quantiser (4 codebooks of 10,000) | [dc2t/codec/codec.py](dc2t/codec/codec.py) |
+| Rectified Flow Transformer | Turns codes into Mel-VAE latents; replaces MuCodec's flow-matching decoder in the 4-codebook configuration | [dc2t/codec/rf.py](dc2t/codec/rf.py), [train.py](dc2t/codec/train.py) |
+| Autoregressive language model | Pre-trained Qwen 2.5 with the embedding matrix enlarged by the audio codes, trained with next-token prediction | [dc2t/lm/model.py](dc2t/lm/model.py) |
+| Documents and decoding | Build the training sequences for both stages; decode under a schedule derived from the plan | [sequence.py](dc2t/lm/sequence.py), [generate.py](dc2t/lm/generate.py) |
+| Data pipeline | Raw recordings to clean clips and a validated manifest | [dc2t/data/](dc2t/data/) |
+| Trainer | One training loop on Hugging Face Accelerate, with checkpointing and exact resume | [dc2t/engine.py](dc2t/engine.py) |
 
 ### Music Chain-of-Thought
 
@@ -48,7 +48,7 @@ The loss is not computed on the instruction, so the model learns to produce the 
 ## Repository layout
 
 ```
-├── dcttgen/
+├── dc2t/
 │   ├── plan.py          # sections and the plan text
 │   ├── config.py        # load_config
 │   ├── engine.py        # fit(): the training loop
@@ -102,9 +102,9 @@ One manifest row supplies the instruction and the plan:
  "split": "train"}
 ```
 
-- `python -m dcttgen.data.manifest --config <config>` checks every row and every audio file, and exits with an error if anything is wrong.
+- `python -m dc2t.data.manifest --config <config>` checks every row and every audio file, and exits with an error if anything is wrong.
 - Clips without a caption are used for pre-training only.
-- The stages that build these files from raw recordings are in [dcttgen/data/](dcttgen/data/) and described in [guide chapter 01](docs/guide/01-data-pipeline.md).
+- The stages that build these files from raw recordings are in [dc2t/data/](dc2t/data/) and described in [guide chapter 01](docs/guide/01-data-pipeline.md).
 
 The Đờn ca tài tử dataset itself is not included in this repository.
 
@@ -114,17 +114,17 @@ The Đờn ca tài tử dataset itself is not included in this repository.
 
 ```bash
 # 1. (4-codebook configuration only) train the quantiser and the Rectified Flow Transformer
-python -m dcttgen.codec.train --config configs/plan_k4.yaml --fit-norm
-python -m dcttgen.codec.train --config configs/plan_k4.yaml
+python -m dc2t.codec.train --config configs/plan_k4.yaml --fit-norm
+python -m dc2t.codec.train --config configs/plan_k4.yaml
 
 # 2. tokenise the dataset
-python -m dcttgen.codec.tokenize --config <config>
+python -m dc2t.codec.tokenize --config <config>
 
 # 3. language model, stage 1: audio tokens only
-python -m dcttgen.lm.train --config <config> --phase pretrain
+python -m dc2t.lm.train --config <config> --phase pretrain
 
 # 4. language model, stage 2: description, plan and audio
-python -m dcttgen.lm.train --config <config> --phase finetune --override lm.checkpoint=runs/lm_pretrain/<name>/step_<N>
+python -m dc2t.lm.train --config <config> --phase finetune --override lm.checkpoint=runs/lm_pretrain/<name>/step_<N>
 ```
 
 Checkpoints and `log.jsonl` are written to `runs/<stage>/<name>/`. Re-running a command resumes from the newest checkpoint. For several GPUs, replace `python -m` with `accelerate launch --multi_gpu --num_processes 8 -m`.
@@ -148,13 +148,13 @@ In two steps, because the language model and MuCodec run in different environmen
 
 ```bash
 # language-model environment: prompt to codes
-python -m dcttgen.infer --config <config> --override lm.checkpoint=runs/lm_finetune/<name>/step_<N> \
+python -m dc2t.infer --config <config> --override lm.checkpoint=runs/lm_finetune/<name>/step_<N> \
     --stage codes --out piece.npy --seed 1 \
     --prompt "A joyful and uplifting Don ca tai tu piece with fast tempo, performed by zither, two-string fiddle, and moon-shaped lute" \
     --duration 150 --bpm 80 --moods uplifting,joyful --instruments "zither,two-string fiddle,moon-shaped lute"
 
 # codec environment: codes to audio
-python -m dcttgen.infer --config <config> --stage audio --codes piece.npy --out piece.wav --seed 1
+python -m dc2t.infer --config <config> --stage audio --codes piece.npy --out piece.wav --seed 1
 ```
 
 Give all four of `--duration`, `--bpm`, `--moods` and `--instruments`, or none of them. With none, the model writes its own plan from the prompt.
@@ -171,7 +171,7 @@ Objective evaluation reported in our research plan, against four baselines train
 | Stable Audio Open | 1.378 | 0.519 | **0.410** |
 | **DC2T** | **1.291** | **0.472** | 0.394 |
 
-These numbers come from the research plan. They have not been reproduced with the code in this repository, which has not been trained yet. The runner that computes the three metrics is [dcttgen/eval/run.py](dcttgen/eval/run.py).
+These numbers come from the research plan. They have not been reproduced with the code in this repository, which has not been trained yet. The runner that computes the three metrics is [dc2t/eval/run.py](dc2t/eval/run.py).
 
 ## What is and isn't here
 

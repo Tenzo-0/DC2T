@@ -1,4 +1,4 @@
-"""CPU tests for dcttgen.codec.rf (no third_party, no checkpoints).
+"""CPU tests for dc2t.codec.rf (no third_party, no checkpoints).
 Run:  pytest -q tests/test_codec_rf.py     or     python tests/test_codec_rf.py
 """
 import math
@@ -8,7 +8,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import torch
 
-from dcttgen.codec.rf import (LAT_C, LAT_F, LatentNorm, RFConfig, RFTransformer, blended_velocity, noisy, pair_frames,
+from dc2t.codec.rf import (LAT_C, LAT_F, LatentNorm, RFConfig, RFTransformer, blended_velocity, noisy, pair_frames,
                               plan_windows, rf_loss, sample, sample_t, sine_window)
 
 

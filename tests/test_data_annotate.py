@@ -5,9 +5,9 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))   # lets `p
 import tempfile
 from pathlib import Path
 
-from dcttgen.data.annotate import (agreement, clip_instruments, cohen_kappa, in_overlap_set, load_annotations,
+from dc2t.data.annotate import (agreement, clip_instruments, cohen_kappa, in_overlap_set, load_annotations,
                                    parse_cell, write_sheet)
-from dcttgen.data.vocab import INSTRUMENTS
+from dc2t.data.vocab import INSTRUMENTS
 
 
 def test_parse_cell():

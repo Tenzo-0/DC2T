@@ -14,9 +14,9 @@ import numpy as np
 import torch
 from transformers import AutoTokenizer, Qwen2Config, Qwen2ForCausalLM
 
-from dcttgen.lm.sequence import build_document
-from dcttgen.lm.vocab import Vocab
-from dcttgen.plan import Plan, plan_sections
+from dc2t.lm.sequence import build_document
+from dc2t.lm.vocab import Vocab
+from dc2t.plan import Plan, plan_sections
 
 CAPTION = "A joyful and uplifting Don ca tai tu piece with fast tempo, performed by zither, two-string fiddle, and moon-shaped lute"
 
@@ -49,7 +49,7 @@ def get_vocab(K=2, V=16, frame_rate=25) -> Vocab:
 
 def random_rows_model(K=2, V=16, frame_rate=1, seed=1):
     """load_lm, then random new rows. At initialisation every row of a codebook is the same, which would make most tests vacuous."""
-    from dcttgen.lm.model import load_lm
+    from dc2t.lm.model import load_lm
     v = get_vocab(K, V, frame_rate)
     model = load_lm(make_cfg(K, V, frame_rate), v)
     torch.manual_seed(seed)

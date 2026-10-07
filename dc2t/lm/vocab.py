@@ -7,7 +7,7 @@ from pathlib import Path
 
 from transformers import AutoTokenizer
 
-from dcttgen.plan import SECTION_ORDER
+from dc2t.plan import SECTION_ORDER
 
 SPECIALS = ("<EOD>", "<SOA>", "<EOA>", "<INST>", "<PLAN>")             # added in exactly this order
 LAYOUT = {"<EOD>": 151665, "<SOA>": 151666, "<EOA>": 151667, "<INST>": 151668, "<PLAN>": 151669}

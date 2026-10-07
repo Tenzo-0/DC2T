@@ -6,7 +6,7 @@ import csv
 import tempfile
 from pathlib import Path
 
-from dcttgen.data.provenance import COLUMNS, load_provenance
+from dc2t.data.provenance import COLUMNS, load_provenance
 
 
 def write_csv(root: Path, rows: list[dict]):

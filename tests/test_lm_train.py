@@ -11,11 +11,11 @@ import torch
 from lm_testkit import get_vocab, make_cfg, random_rows_model, run_all, write_dataset
 from safetensors.torch import load_file, save_file
 
-from dcttgen.lm import train as T
+from dc2t.lm import train as T
 
 
 def fake_chapter_04(root, runs, calls):
-    """Stand-ins for dcttgen.config.load_config and dcttgen.engine.fit, which chapter 04 owns."""
+    """Stand-ins for dc2t.config.load_config and dc2t.engine.fit, which chapter 04 owns."""
     def load_config(path, overrides):
         cfg = make_cfg(2, 16, 1, data_root=str(root))
         cfg.paths.runs = str(runs)
@@ -47,7 +47,7 @@ def fake_chapter_04(root, runs, calls):
         step.mkdir(parents=True)
         save_file({k: t.contiguous() for k, t in model.state_dict().items() if k != "lm.lm_head.weight"}, str(step / "model.safetensors"))
 
-    return {"dcttgen.config": types.SimpleNamespace(load_config=load_config), "dcttgen.engine": types.SimpleNamespace(fit=fit)}
+    return {"dc2t.config": types.SimpleNamespace(load_config=load_config), "dc2t.engine": types.SimpleNamespace(fit=fit)}
 
 
 def test_main_runs_both_phases_and_the_weights_carry_over():

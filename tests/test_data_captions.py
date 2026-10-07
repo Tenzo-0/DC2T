@@ -6,7 +6,7 @@ from pathlib import Path
 from types import SimpleNamespace as NS
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from dcttgen.data.captions import cached_captions, caption_one, generate, template_caption, tempo_word, validate_caption  # noqa: E402
+from dc2t.data.captions import cached_captions, caption_one, generate, template_caption, tempo_word, validate_caption  # noqa: E402
 
 PLAN_EXAMPLE = "A joyful and uplifting Don ca tai tu piece with fast tempo, performed by zither, two-string fiddle, and moon-shaped lute"
 THREE = ["zither", "two-string fiddle", "moon-shaped lute"]

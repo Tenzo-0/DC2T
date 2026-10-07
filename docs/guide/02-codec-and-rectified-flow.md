@@ -1,4 +1,4 @@
-# DcttGen Implementation Guide — 02. Codec and Rectified Flow
+# DC2T Implementation Guide — 02. Codec and Rectified Flow
 
 > **For agentic workers:** REQUIRED SUB-SKILL: use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this chapter task by task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -10,7 +10,7 @@
 ## Global constraints
 
 - `Codec` has exactly the interface of contract [§9](00-overview-and-contracts.md#9-code-interfaces-between-chapters): `encode` returns exactly `N × 25 / sample_rate` frames; `decode` accepts any `T ≥ 1` and returns exactly `T × sample_rate / 25` samples in `[-1, 1]`.
-- `dcttgen/codec/codec.py` is the **only** module that imports from `third_party/MuCodec`.
+- `dc2t/codec/codec.py` is the **only** module that imports from `third_party/MuCodec`.
 - **Time convention (plan §3.4): `t = 0` is data, `t = 1` is noise.** MuCodec's released sampler runs the other way. Never mix the two.
 - `K`, `V`, the sample rate, the frame rate and the window length come from config. The Mel-VAE's own constants (48 kHz, 3,840 samples per latent frame, 16 × 32 values per latent frame) are properties of the frozen checkpoint and live as named constants.
 - **The RVQ is frozen for the lifetime of a tokenised dataset.** Retraining it means a new `codec.tag`, re-tokenising, and retraining the language model. A fingerprint check enforces this.
@@ -134,17 +134,17 @@ The frozen Mel-VAE decoder and HiFi-GAN are run the same way on windows of `rf.v
 
 | File | Responsibility |
 |---|---|
-| `dcttgen/codec/rf.py` | `RFTransformer`, `LatentNorm`, `pair_frames`, `sample_t`, `rf_loss`, `plan_windows`, `sample` |
-| `dcttgen/codec/codec.py` | `Released` (everything third-party), `Codec`, exact-length helpers, fingerprint and tag-directory guard |
-| `dcttgen/codec/train.py` | `CodecTrainer`, `fit_latent_norm`, `WindowDataset`, entry point |
-| `dcttgen/codec/tokenize.py` | the tokenisation job |
+| `dc2t/codec/rf.py` | `RFTransformer`, `LatentNorm`, `pair_frames`, `sample_t`, `rf_loss`, `plan_windows`, `sample` |
+| `dc2t/codec/codec.py` | `Released` (everything third-party), `Codec`, exact-length helpers, fingerprint and tag-directory guard |
+| `dc2t/codec/train.py` | `CodecTrainer`, `fit_latent_norm`, `WindowDataset`, entry point |
+| `dc2t/codec/tokenize.py` | the tokenisation job |
 | `tests/test_codec_rf.py`, `test_codec_codec.py`, `test_codec_train.py` | 30 tests |
 
 ## 3. Tasks
 
 ### Task 1: the Rectified Flow Transformer, its loss and its sampler
 
-**Files:** Create `dcttgen/codec/__init__.py` (empty), `dcttgen/codec/rf.py` · Test `tests/test_codec_rf.py`
+**Files:** Create `dc2t/codec/__init__.py` (empty), `dc2t/codec/rf.py` · Test `tests/test_codec_rf.py`
 
 **Interfaces:**
 - Consumes: `cfg.rf.width`, `cfg.rf.depth`, `cfg.rf.heads` (through `RFConfig.from_cfg`).
@@ -158,7 +158,7 @@ The oracle test is worth understanding before reading the code. For a fixed targ
 <summary><code>tests/test_codec_rf.py</code> — 191 lines (click to expand)</summary>
 
 ```python
-"""CPU tests for dcttgen.codec.rf (no third_party, no checkpoints).
+"""CPU tests for dc2t.codec.rf (no third_party, no checkpoints).
 Run:  pytest -q tests/test_codec_rf.py     or     python tests/test_codec_rf.py
 """
 import math
@@ -168,7 +168,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import torch
 
-from dcttgen.codec.rf import (LAT_C, LAT_F, LatentNorm, RFConfig, RFTransformer, blended_velocity, noisy, pair_frames,
+from dc2t.codec.rf import (LAT_C, LAT_F, LatentNorm, RFConfig, RFTransformer, blended_velocity, noisy, pair_frames,
                               plan_windows, rf_loss, sample, sample_t, sine_window)
 
 
@@ -353,10 +353,10 @@ if __name__ == "__main__":
 
 </details>
 
-- [ ] **Step 2: run it, expect failure** — `python tests/test_codec_rf.py` → `ModuleNotFoundError: No module named 'dcttgen.codec.rf'`
+- [ ] **Step 2: run it, expect failure** — `python tests/test_codec_rf.py` → `ModuleNotFoundError: No module named 'dc2t.codec.rf'`
 - [ ] **Step 3: implement**
 
-**`dcttgen/codec/rf.py`** — 225 lines
+**`dc2t/codec/rf.py`** — 225 lines
 
 ```python
 """Rectified-flow transformer for Mel-VAE latents (plan 3.4). Pure PyTorch: no third_party import, CPU-testable.
@@ -587,11 +587,11 @@ def sample(v_fn, cond: Tensor, *, steps: int, win: int, cfg_scale: float = 1.0, 
 ```
 
 - [ ] **Step 4: run it, expect a pass** — `python tests/test_codec_rf.py` → `test_codec_rf: 13 tests passed` (about 20 s on a laptop CPU; one test trains a small model for 300 steps)
-- [ ] **Step 5: commit** — `git add dcttgen/codec tests/test_codec_rf.py && git commit -m "feat: rectified flow transformer, loss and windowed sampler"`
+- [ ] **Step 5: commit** — `git add dc2t/codec tests/test_codec_rf.py && git commit -m "feat: rectified flow transformer, loss and windowed sampler"`
 
 ### Task 2: the `Codec` class
 
-**Files:** Create `dcttgen/codec/codec.py` · Test `tests/test_codec_codec.py`
+**Files:** Create `dc2t/codec/codec.py` · Test `tests/test_codec_codec.py`
 
 **Interfaces:**
 - Consumes: `rf.py`; `cfg.paths.mucodec_root`, `cfg.paths.data_root`, `cfg.audio.sample_rate`, `cfg.audio.frame_rate`, `cfg.codec.*`, `cfg.rf.decode_steps`, `cfg.rf.decode_cfg`, `cfg.rf.vae_window`, `cfg.rf.vae_hop`.
@@ -608,7 +608,7 @@ Note on `encoder=` / `decoder=`: the released stack always loads all three check
 <summary><code>tests/test_codec_codec.py</code> — 202 lines (click to expand)</summary>
 
 ```python
-"""CPU tests for dcttgen.codec.codec: exact lengths, windows, fingerprint. The released stack is replaced by a fake that has the
+"""CPU tests for dc2t.codec.codec: exact lengths, windows, fingerprint. The released stack is replaced by a fake that has the
 same shapes and the same quirks (T+1 frames, stereo output, one sample short, a crash length). No third_party, no checkpoints.
 Run:  pytest -q tests/test_codec_codec.py     or     python tests/test_codec_codec.py
 """
@@ -622,8 +622,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import torch
 from torch import nn
 
-from dcttgen.codec.codec import VAE_FRAME, Codec, claim_tag_dir, rvq_fingerprint, tile_windows, to_rate
-from dcttgen.codec.rf import LatentNorm, RFConfig, RFTransformer
+from dc2t.codec.codec import VAE_FRAME, Codec, claim_tag_dir, rvq_fingerprint, tile_windows, to_rate
+from dc2t.codec.rf import LatentNorm, RFConfig, RFTransformer
 
 ns = types.SimpleNamespace
 K4, V4 = 4, 50  # a tiny plan-path codebook; nothing in the code may assume 4 x 10000
@@ -814,10 +814,10 @@ if __name__ == "__main__":
 
 </details>
 
-- [ ] **Step 2: run it, expect failure** — `python tests/test_codec_codec.py` → `ModuleNotFoundError: No module named 'dcttgen.codec.codec'`
+- [ ] **Step 2: run it, expect failure** — `python tests/test_codec_codec.py` → `ModuleNotFoundError: No module named 'dc2t.codec.codec'`
 - [ ] **Step 3: implement**
 
-**`dcttgen/codec/codec.py`** — 311 lines
+**`dc2t/codec/codec.py`** — 311 lines
 
 ```python
 """Codec: waveform <-> RVQ codes (contract section 9). The ONLY module that imports from third_party/MuCodec.
@@ -844,7 +844,7 @@ import torch.nn.functional as F
 from scipy.signal import resample_poly
 from torch import Tensor
 
-from dcttgen.codec.rf import (FRAMES_PER_LATENT, LatentNorm, RFConfig, RFTransformer, pair_frames, plan_windows, sample,
+from dc2t.codec.rf import (FRAMES_PER_LATENT, LatentNorm, RFConfig, RFTransformer, pair_frames, plan_windows, sample,
                               sine_window)
 
 VAE_SR = 48000  # Mel-VAE / HiFi-GAN rate (tools/get_melvaehifigan48k.py:1472)
@@ -1025,7 +1025,7 @@ class Codec:
         if cfg.codec.checkpoint is None:
             if (K, V) != (1, 16384):
                 raise ValueError(f"the released weights are 1 x 16384 but the config asks for {K} x {V}: "
-                                 "train the codec (python -m dcttgen.codec.train) and set codec.checkpoint")
+                                 "train the codec (python -m dc2t.codec.train) and set codec.checkpoint")
             codec = cls(cfg, device, rel)
         else:
             rvq = load_rvq(cfg, rel, cfg.codec.checkpoint).to(device)
@@ -1134,17 +1134,17 @@ class Codec:
 ```
 
 - [ ] **Step 4: run it, expect a pass** — `python tests/test_codec_codec.py` → `test_codec_codec: 13 tests passed`
-- [ ] **Step 5: commit** — `git add dcttgen/codec/codec.py tests/test_codec_codec.py && git commit -m "feat: Codec over the released MuCodec stack and our RF decoder"`
+- [ ] **Step 5: commit** — `git add dc2t/codec/codec.py tests/test_codec_codec.py && git commit -m "feat: Codec over the released MuCodec stack and our RF decoder"`
 
 **Not executed:** `Released` itself, against the real checkpoints. Its first real run is milestone M0 (§4).
 
 ### Task 3: training the RVQ and the RF Transformer
 
-**Files:** Create `dcttgen/codec/train.py` · Test `tests/test_codec_train.py` (first three tests)
+**Files:** Create `dc2t/codec/train.py` · Test `tests/test_codec_train.py` (first three tests)
 
 **Interfaces:**
 - Consumes: `fit(model, train_loader, val_loader, cfg, run_dir)` and `load_config` (chapter 04); `Released`; `cfg.rf.cond_drop`, `ema_decay`, `w_commit`, `w_codebook`, `norm_batches`; `cfg.train.batch_size`, `num_workers`; `manifest/{train,val}.jsonl` and `audio/*.flac` (contract §7).
-- Produces: `CodecTrainer(cfg, rvq, released)` — `forward(batch) -> {"loss", "rf", "commit", "codebook", "ppl_k0", …}` and `on_step_end(step)` (the engine's contract); `fit_latent_norm`; `WindowDataset`; `python -m dcttgen.codec.train --config C [--fit-norm] [--name N] [--override …]`. Run directory `runs/codec/<name>/` with `latent_norm.pt` and the engine's `step_*/`.
+- Produces: `CodecTrainer(cfg, rvq, released)` — `forward(batch) -> {"loss", "rf", "commit", "codebook", "ppl_k0", …}` and `on_step_end(step)` (the engine's contract); `fit_latent_norm`; `WindowDataset`; `python -m dc2t.codec.train --config C [--fit-norm] [--name N] [--override …]`. Run directory `runs/codec/<name>/` with `latent_norm.pt` and the engine's `step_*/`.
 
 What is trained and what is not:
 
@@ -1176,8 +1176,8 @@ import torch
 import torch.nn.functional as F
 from torch import nn
 
-from dcttgen.codec.tokenize import tokenize
-from dcttgen.codec.train import CodecTrainer, fit_latent_norm
+from dc2t.codec.tokenize import tokenize
+from dc2t.codec.train import CodecTrainer, fit_latent_norm
 
 ns = types.SimpleNamespace
 K, V, W = 2, 8, 8  # codebooks, codebook size, code frames per window
@@ -1316,13 +1316,13 @@ if __name__ == "__main__":
 
 </details>
 
-- [ ] **Step 2: run it, expect failure** — `python tests/test_codec_train.py` → `ModuleNotFoundError: No module named 'dcttgen.codec.train'`
+- [ ] **Step 2: run it, expect failure** — `python tests/test_codec_train.py` → `ModuleNotFoundError: No module named 'dc2t.codec.train'`
 - [ ] **Step 3: implement**
 
-**`dcttgen/codec/train.py`** — 133 lines
+**`dc2t/codec/train.py`** — 133 lines
 
 ```python
-"""python -m dcttgen.codec.train --config C [--override a.b=value ...] [--name N] [--fit-norm]
+"""python -m dc2t.codec.train --config C [--override a.b=value ...] [--name N] [--fit-norm]
 
 Trains the K x V RVQ and the Rectified Flow Transformer together, on frozen MuEncoder features and frozen Mel-VAE latents
 (plan 3.4, 3.6). Run it once with --fit-norm (one process), then without it (any number of processes, through fit())."""
@@ -1339,8 +1339,8 @@ import torch.nn.functional as F
 from torch import nn
 from torch.utils.data import DataLoader, Dataset
 
-from dcttgen.codec.codec import VAE_SR, Released, to_rate
-from dcttgen.codec.rf import LatentNorm, RFConfig, RFTransformer, pair_frames, rf_loss, sample_t
+from dc2t.codec.codec import VAE_SR, Released, to_rate
+from dc2t.codec.rf import LatentNorm, RFConfig, RFTransformer, pair_frames, rf_loss, sample_t
 
 
 class CodecTrainer(nn.Module):
@@ -1429,8 +1429,8 @@ def main(argv=None) -> None:
     ap.add_argument("--name", help="run directory name; default codec.tag")
     ap.add_argument("--fit-norm", action="store_true", help="compute the latent statistics, write latent_norm.pt and exit")
     args = ap.parse_args(argv)
-    from dcttgen.config import load_config      # chapter 04
-    from dcttgen.engine import fit              # chapter 04
+    from dc2t.config import load_config      # chapter 04
+    from dc2t.engine import fit              # chapter 04
     cfg = load_config(args.config, args.override)
     t = cfg.train
     device = torch.device("cuda", int(os.environ.get("LOCAL_RANK", 0))) if torch.cuda.is_available() else torch.device("cpu")
@@ -1458,27 +1458,27 @@ if __name__ == "__main__":
 ```
 
 - [ ] **Step 4: run it, expect a pass** — `python tests/test_codec_train.py` → `test_codec_train: 4 tests passed` (after Task 4)
-- [ ] **Step 5: commit** — `git add dcttgen/codec/train.py tests/test_codec_train.py && git commit -m "feat: joint RVQ and rectified flow training module"`
+- [ ] **Step 5: commit** — `git add dc2t/codec/train.py tests/test_codec_train.py && git commit -m "feat: joint RVQ and rectified flow training module"`
 
 **Not executed:** `WindowDataset` (needs `soundfile` and real clips) and `main` (needs MuCodec and a GPU). Both were compiled; the module's `forward`, the statistics and the EMA ran on CPU.
 **Unverified:** on several GPUs each process picks its device from the `LOCAL_RANK` environment variable, which `accelerate launch` is expected to set. Confirm on the first multi-GPU run that the processes do not all load MuCodec onto GPU 0 (`nvidia-smi`).
 
 ### Task 4: tokenising the dataset
 
-**Files:** Create `dcttgen/codec/tokenize.py` · Test `tests/test_codec_train.py` (last test)
+**Files:** Create `dc2t/codec/tokenize.py` · Test `tests/test_codec_train.py` (last test)
 
 **Interfaces:**
 - Consumes: `Codec.encode`, `Codec.fingerprint`, `claim_tag_dir`; `manifest/all.jsonl`, `audio/*.flac`.
-- Produces: `tokenize(cfg, codec, rows, read_audio, shard=(0, 1)) -> (written, skipped)`; `python -m dcttgen.codec.tokenize --config C [--shard i/n]`; files `codes/<tag>/<clip_id>.npy` (`int16`, `[K, 25 × duration]`) and `codes/<tag>/meta.json`.
+- Produces: `tokenize(cfg, codec, rows, read_audio, shard=(0, 1)) -> (written, skipped)`; `python -m dc2t.codec.tokenize --config C [--shard i/n]`; files `codes/<tag>/<clip_id>.npy` (`int16`, `[K, 25 × duration]`) and `codes/<tag>/meta.json`.
 
 - [ ] **Step 1:** the test is the last function of `tests/test_codec_train.py` above.
-- [ ] **Step 2: run it, expect failure** — `ModuleNotFoundError: No module named 'dcttgen.codec.tokenize'`
+- [ ] **Step 2: run it, expect failure** — `ModuleNotFoundError: No module named 'dc2t.codec.tokenize'`
 - [ ] **Step 3: implement**
 
-**`dcttgen/codec/tokenize.py`** — 69 lines
+**`dc2t/codec/tokenize.py`** — 69 lines
 
 ```python
-"""python -m dcttgen.codec.tokenize --config C [--override a.b=value ...] [--shard i/n]
+"""python -m dc2t.codec.tokenize --config C [--override a.b=value ...] [--shard i/n]
 
 Writes data/codes/<codec.tag>/<clip_id>.npy (contract 7.3) for every clip of manifest/all.jsonl.
 Safe to re-run (finished clips are skipped) and to run as n shards at once, one per GPU: --shard 0/8 ... --shard 7/8."""
@@ -1492,7 +1492,7 @@ from pathlib import Path
 import numpy as np
 import torch
 
-from dcttgen.codec.codec import claim_tag_dir
+from dc2t.codec.codec import claim_tag_dir
 
 
 def tokenize(cfg, codec, rows, read_audio, shard: tuple[int, int] = (0, 1)) -> tuple[int, int]:
@@ -1531,8 +1531,8 @@ def main(argv=None) -> None:
     ap.add_argument("--shard", default="0/1", help="i/n: process every n-th clip starting at i")
     args = ap.parse_args(argv)
     import soundfile as sf
-    from dcttgen.codec.codec import Codec
-    from dcttgen.config import load_config      # chapter 04
+    from dc2t.codec.codec import Codec
+    from dc2t.config import load_config      # chapter 04
     cfg = load_config(args.config, args.override)
     i, n = (int(x) for x in args.shard.split("/"))
     if not 0 <= i < n:
@@ -1550,7 +1550,7 @@ if __name__ == "__main__":
 ```
 
 - [ ] **Step 4: run it, expect a pass** — `python tests/test_codec_train.py` → `test_codec_train: 4 tests passed`
-- [ ] **Step 5: commit** — `git add dcttgen/codec/tokenize.py && git commit -m "feat: resumable, shardable dataset tokenisation"`
+- [ ] **Step 5: commit** — `git add dc2t/codec/tokenize.py && git commit -m "feat: resumable, shardable dataset tokenisation"`
 
 ## 4. Running it
 
@@ -1560,8 +1560,8 @@ All commands run in the codec environment (chapter 04), from the repository root
 # M0 - does the released codec handle Don ca tai tu?  Reconstruct three clips and listen.   (not executed in this guide)
 python - <<'EOF'
 import soundfile as sf, torch
-from dcttgen.config import load_config
-from dcttgen.codec.codec import Codec
+from dc2t.config import load_config
+from dc2t.codec.codec import Codec
 cfg = load_config("configs/bootstrap_k1.yaml")
 codec = Codec.load(cfg, "cuda")
 for name in ["clip_a", "clip_b", "clip_c"]:                      # 32 kHz mono FLAC files of whole seconds
@@ -1571,14 +1571,14 @@ for name in ["clip_a", "clip_b", "clip_c"]:                      # 32 kHz mono F
 EOF
 
 # M2 - bootstrap: tokenise with the released RVQ (one shard per GPU)
-python -m dcttgen.codec.tokenize --config configs/bootstrap_k1.yaml --shard 0/1
+python -m dc2t.codec.tokenize --config configs/bootstrap_k1.yaml --shard 0/1
 
 # M3 - plan path: statistics once, then joint RVQ + RF training
-python -m dcttgen.codec.train --config configs/plan_k4.yaml --fit-norm
-accelerate launch -m dcttgen.codec.train --config configs/plan_k4.yaml
+python -m dc2t.codec.train --config configs/plan_k4.yaml --fit-norm
+accelerate launch -m dc2t.codec.train --config configs/plan_k4.yaml
 
 # M4 - freeze: point the config at the final checkpoint, then tokenise with OUR RVQ
-python -m dcttgen.codec.tokenize --config configs/plan_k4.yaml \
+python -m dc2t.codec.tokenize --config configs/plan_k4.yaml \
     --override codec.checkpoint=runs/codec/k4v10000/step_0020000 --shard 0/8      # ... --shard 7/8
 ```
 

@@ -6,8 +6,8 @@ from pathlib import Path
 
 import numpy as np
 
-from dcttgen.data.common import write_jsonl
-from dcttgen.data.features import vocal_fraction
+from dc2t.data.common import write_jsonl
+from dc2t.data.features import vocal_fraction
 
 
 def centre_excerpt(y: np.ndarray, seconds: int, sr: int) -> np.ndarray:

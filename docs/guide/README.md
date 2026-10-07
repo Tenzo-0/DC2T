@@ -1,6 +1,6 @@
-# DcttGen Implementation Guide
+# DC2T Implementation Guide
 
-How to build DcttGen — the text-to-music system for Don ca tai tu described in [`Research-Plan-1.pdf`](../../Research-Plan-1.pdf) — from an empty repository to a filled-in results table.
+How to build DC2T — the text-to-music system for Don ca tai tu described in [`Research-Plan-1.pdf`](../../Research-Plan-1.pdf) — from an empty repository to a filled-in results table.
 
 ## The chapters
 
@@ -16,7 +16,7 @@ Each chapter is a plan you can execute task by task: write the test, watch it fa
 
 ## State of the repository
 
-The reference implementation printed in the chapters is **already in this repository**: `dcttgen/` (the package), `tests/` (131 tests), `configs/`, `pyproject.toml` and `.gitignore`. For those files the chapters are the explanation, not work to redo — their "expect failure" steps describe how the code was built and will not fail now.
+The reference implementation printed in the chapters is **already in this repository**: `dc2t/` (the package), `tests/` (131 tests), `configs/`, `pyproject.toml` and `.gitignore`. For those files the chapters are the explanation, not work to redo — their "expect failure" steps describe how the code was built and will not fail now.
 
 To see the suite pass on a machine that has only `uv` (this is the command that was run here; it installs nothing into the repository):
 
@@ -37,7 +37,7 @@ The files in the repository are the source of truth from here on. Each chapter h
 | Milestone | What | Done when |
 |---|---|---|
 | **M0** | Environments, the test suite, and three clips reconstructed with the released codec | The suite is green and **you have listened** to how the public codec handles these instruments |
-| **M1** | About 20 hours through the data pipeline | `python -m dcttgen.data.manifest --config …` exits 0 |
+| **M1** | About 20 hours through the data pipeline | `python -m dc2t.data.manifest --config …` exits 0 |
 | **M2** | End to end with the released codec (K = 1): tokenise → pre-train → fine-tune → generate | A text prompt produces a wav of the requested length |
 | **M3** | Train our own RVQ (4 × 10,000) and Rectified Flow Transformer | Our reconstructions are at least as good as the released decoder's |
 | **M4** | Full model with coarse-to-fine K = 4 on the full dataset | Pieces follow their plan and stay coherent over minutes |
@@ -93,7 +93,7 @@ Every chapter ends with its own list of open questions.
 
 | What | Why it could not run here | How to check |
 |---|---|---|
-| Anything on a GPU; every memory and speed figure | No GPU | `python -m dcttgen.lm.train … --probe`; `seconds_per_step` in `log.jsonl` |
+| Anything on a GPU; every memory and speed figure | No GPU | `python -m dc2t.lm.train … --probe`; `seconds_per_step` in `log.jsonl` |
 | Training on more than one process | The two-process check needs Linux | `python tests/ddp_check.py` → `DDP CHECK OK` |
 | The real MuCodec: loading, encoding, decoding | Its checkpoints and dependencies are Linux/GPU | The reconstruction snippet in chapter 02 §4 |
 | Installing the four environments | Linux-only packages | The import smoke tests in chapter 04, Task 0 |

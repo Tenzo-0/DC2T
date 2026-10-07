@@ -1,5 +1,5 @@
 """Closed vocabularies of the manifest (contract 7.2)."""
-from dcttgen.plan import INSTRUMENTS  # noqa: F401 - the six canonical names, in the contract's order; defined once, in plan.py
+from dc2t.plan import INSTRUMENTS  # noqa: F401 - the six canonical names, in the contract's order; defined once, in plan.py
 
 # Mood word -> labels of Essentia's mtg_jamendo_moodtheme model whose probabilities vote for it.
 # Every label below is one of the model's 56 classes (checked by tests/test_data_features.py).

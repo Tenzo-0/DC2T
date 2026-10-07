@@ -5,10 +5,10 @@ import torch
 import torch.nn.functional as F
 from lm_testkit import CAPTION, get_vocab, make_doc, make_plan, raises, random_rows_model, run_all
 
-from dcttgen.lm import generate as G
-from dcttgen.lm.generate import build_schedule, generate_codes, range_logits, sample
-from dcttgen.lm.model import load_lm
-from dcttgen.lm.sequence import build_document, instruct_ids, metadata_ids
+from dc2t.lm import generate as G
+from dc2t.lm.generate import build_schedule, generate_codes, range_logits, sample
+from dc2t.lm.model import load_lm
+from dc2t.lm.sequence import build_document, instruct_ids, metadata_ids
 from lm_testkit import make_cfg
 
 

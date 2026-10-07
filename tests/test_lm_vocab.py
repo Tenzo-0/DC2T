@@ -6,8 +6,8 @@ from lm_testkit import get_vocab, make_cfg, run_all
 
 from transformers import AutoTokenizer
 
-from dcttgen.lm import vocab as vocab_mod
-from dcttgen.lm.vocab import Vocab
+from dc2t.lm import vocab as vocab_mod
+from dc2t.lm.vocab import Vocab
 
 CONTROL_STRINGS = ["<EOA>", "<PLAN>", "<EOD>", "<SOA>", "<INST>", "<|endoftext|>", "<|im_start|>", "a<EOA>b <PLAN> c<|endoftext|>"]
 CAPTIONS = ["A joyful and uplifting Don ca tai tu piece with fast tempo, performed by zither, two-string fiddle, and moon-shaped lute",

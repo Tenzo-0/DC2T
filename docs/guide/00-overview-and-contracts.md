@@ -1,4 +1,4 @@
-# DcttGen Implementation Guide — 00. Overview, Spec and Shared Contracts
+# DC2T Implementation Guide — 00. Overview, Spec and Shared Contracts
 
 > Read this chapter first. Chapters 01–04 are separate plans that can each be built and tested on their own; this chapter holds everything two or more of them depend on. **If a chapter and this file disagree, this file wins.**
 
@@ -105,7 +105,7 @@ Recordings from online sources, musicians and experts → resampled to **32 kHz,
 
 ### 2.6 Evaluation (§4)
 
-Train/validation split 98 % / 2 %. Baselines: MusicLM (lucidrains implementation), MusicGen-Medium, AudioLDM2-Music, Stable Audio Open, all trained on the same dataset. Metrics: **FAD_openl3**, **KLD_passt**, **CLAP_score**. The plan's Table 3 row for DcttGen: FAD 1.291, KLD 0.472, CLAP 0.394.
+Train/validation split 98 % / 2 %. Baselines: MusicLM (lucidrains implementation), MusicGen-Medium, AudioLDM2-Music, Stable Audio Open, all trained on the same dataset. Metrics: **FAD_openl3**, **KLD_passt**, **CLAP_score**. The plan's Table 3 row for DC2T: FAD 1.291, KLD 0.472, CLAP 0.394.
 
 ---
 
@@ -198,12 +198,12 @@ Chapter-specific decisions live in the chapters. These ones cross chapter bounda
 ## 5. Repository layout and who owns what
 
 ```
-DCTTGen/
+DC2T/
 ├── Research-Plan-1.pdf
 ├── pyproject.toml                 # 04
 ├── configs/                       # 04 — base.yaml, bootstrap_k1.yaml, plan_k4.yaml, pilot.yaml
 ├── third_party/MuCodec/           # 04 sets it up: git clone pinned to 128f91b + three checkpoints
-├── dcttgen/
+├── dc2t/
 │   ├── config.py                  # 04 — load_config
 │   ├── engine.py                  # 04 — fit(): the one training loop
 │   ├── plan.py                    # 03 — plan_sections, Plan (code fixed in §8.3 below)
@@ -221,13 +221,13 @@ Command names used across chapters:
 
 | Command | Owner | Purpose |
 |---|---|---|
-| `python -m dcttgen.data.pipeline <stage> --config C` | 01 | data pipeline stages (chapter 01 lists them) |
-| `python -m dcttgen.data.manifest --config C` | 01 | validate the manifest and the audio files; exit code 0 = milestone M1 |
-| `python -m dcttgen.codec.train --config C [--fit-norm]` | 02 | measure latent statistics, then train RVQ + RF Transformer |
-| `python -m dcttgen.codec.tokenize --config C [--shard i/n]` | 02 | write `data/codes/<tag>/<clip_id>.npy` for every clip |
-| `python -m dcttgen.lm.train --config C --phase pretrain\|finetune [--probe]` | 03 | train the AR LM; `--probe` measures one step |
-| `python -m dcttgen.infer --config C --stage codes\|audio\|all …` | 04 | prompt → codes (`lm` environment), codes → wav (`codec` environment) |
-| `python -m dcttgen.eval.run --config C --out DIR --stage codes\|audio\|score` | 04 | generate for the validation prompts; FAD / KLD / CLAP |
+| `python -m dc2t.data.pipeline <stage> --config C` | 01 | data pipeline stages (chapter 01 lists them) |
+| `python -m dc2t.data.manifest --config C` | 01 | validate the manifest and the audio files; exit code 0 = milestone M1 |
+| `python -m dc2t.codec.train --config C [--fit-norm]` | 02 | measure latent statistics, then train RVQ + RF Transformer |
+| `python -m dc2t.codec.tokenize --config C [--shard i/n]` | 02 | write `data/codes/<tag>/<clip_id>.npy` for every clip |
+| `python -m dc2t.lm.train --config C --phase pretrain\|finetune [--probe]` | 03 | train the AR LM; `--probe` measures one step |
+| `python -m dc2t.infer --config C --stage codes\|audio\|all …` | 04 | prompt → codes (`lm` environment), codes → wav (`codec` environment) |
+| `python -m dc2t.eval.run --config C --out DIR --stage codes\|audio\|score` | 04 | generate for the validation prompts; FAD / KLD / CLAP |
 
 `C` may be several overlay files separated by commas (`configs/bootstrap_k1.yaml,configs/pilot.yaml`). Multi-GPU runs replace `python -m` with `accelerate launch --multi_gpu --num_processes N -m`.
 
@@ -328,7 +328,7 @@ Chapter 01 may add fields (quality scores, source, licence). Readers must ignore
 **Verified** (accelerate 1.15.0, transformers 4.57.1, torch 2.9.0, tiny tied-embedding Qwen2 model on CPU): `Accelerator.save_state` writes `model.safetensors`, `optimizer.bin` and `random_states_0.pkl` (plus scheduler and gradient-scaler files when those are in use). **Tied tensors are stored once**: for the language model, `lm_head.weight` is absent from the file because it is the same tensor as the input embedding. Two consequences:
 
 - Resuming with `Accelerator.load_state` works unchanged, and the tie survives.
-- Loading the file into a bare module with `load_state_dict(strict=True)` fails with `Missing key(s): "…lm_head.weight"`. Inference-time loaders therefore use `safetensors.torch.load_model(module, path)` — strict, but aware that a missing tied alias is fine — or `dcttgen.engine.load_weights`, which additionally strips the `module.` prefix of checkpoints written by a distributed run. Never a bare `strict=False`, which would also hide a genuinely wrong checkpoint.
+- Loading the file into a bare module with `load_state_dict(strict=True)` fails with `Missing key(s): "…lm_head.weight"`. Inference-time loaders therefore use `safetensors.torch.load_model(module, path)` — strict, but aware that a missing tied alias is fine — or `dc2t.engine.load_weights`, which additionally strips the `module.` prefix of checkpoints written by a distributed run. Never a bare `strict=False`, which would also hide a genuinely wrong checkpoint.
 
 ---
 
@@ -366,7 +366,7 @@ A section of `s` seconds is the frame slice `codes[:, 25·start : 25·(start + s
 
 ### 8.3 Sections and the plan text
 
-This code is canonical. Chapter 03 places it in `dcttgen/plan.py`; chapter 01 calls it.
+This code is canonical. Chapter 03 places it in `dc2t/plan.py`; chapter 01 calls it.
 
 ```python
 EDGE_MAX_S, MAIN_MAX_S, MIN_CLIP_S = 30, 240, 30          # Plan §3.3.2; MIN_CLIP_S is Decision D4
@@ -448,11 +448,11 @@ Signatures only; bodies belong to the owning chapter. Shapes: `B` batch, `K` cod
 The chapters add to these without changing them: `Vocab` also carries `frame_rate`, `codec_tag` and the structure id lists, and has `enc`, `save` and `check_checkpoint` (chapter 03); `Codec` has `fingerprint()`, and its `encoder` / `decoder` flags only skip *our* weights because the released stack always loads whole (chapter 02); `infer.py` exposes the two halves of `text_to_music` as `prompt_to_codes` and `codes_to_wav` so that they can run in different environments, and `engine.py` exposes `load_weights` (chapter 04).
 
 ```python
-# dcttgen/config.py — chapter 04
+# dc2t/config.py — chapter 04
 def load_config(path: str, overrides: list[str] = ()) -> "Config": ...
 #   deep-merges `path` over configs/base.yaml, then applies "a.b=value" overrides; attribute access (cfg.codec.tag)
 
-# dcttgen/plan.py — chapter 03 (code in §8.3)
+# dc2t/plan.py — chapter 03 (code in §8.3)
 def max_clip_seconds(position: str = "whole") -> int: ...
 def plan_sections(duration: int, position: str = "whole") -> list[tuple[str, int]]: ...
 @dataclass
@@ -464,7 +464,7 @@ class Plan:
     @staticmethod
     def from_manifest(row: dict) -> "Plan": ...
 
-# dcttgen/codec/codec.py — chapter 02. The ONLY module allowed to import from third_party/MuCodec.
+# dc2t/codec/codec.py — chapter 02. The ONLY module allowed to import from third_party/MuCodec.
 class Codec:
     num_codebooks: int            # K
     codebook_size: int            # V
@@ -478,7 +478,7 @@ class Codec:
                seed: int | None = None) -> Tensor: ...
     #   codes Long[B, K, T], any T >= 1  ->  wav Float[B, T * sample_rate // 25], values in [-1, 1]
 
-# dcttgen/lm/ — chapter 03
+# dc2t/lm/ — chapter 03
 class Vocab:                                        # vocab.py
     tokenizer: "PreTrainedTokenizerFast"
     eod: int; soa: int; eoa: int; inst: int; plan: int; pad: int
@@ -494,7 +494,7 @@ def generate_codes(model, vocab: Vocab, caption: str, plan: Plan | None = None, 
                    seed: int | None = None) -> tuple[Plan, Tensor]: ...             # generate.py
 #   returns the plan actually used and codes Long[K, 25 * plan.duration]; plan=None lets the model write the plan
 
-# dcttgen/engine.py — chapter 04
+# dc2t/engine.py — chapter 04
 def fit(model: "nn.Module", train_loader, val_loader, cfg, run_dir: str) -> None: ...
 #   Contract with every trainable model:
 #     model(batch: dict) -> dict                its forward(); must contain "loss" (scalar Tensor with grad); other entries are scalar logs.
@@ -504,7 +504,7 @@ def fit(model: "nn.Module", train_loader, val_loader, cfg, run_dir: str) -> None
 #   fit() owns: AdamW + warm-up/cosine from cfg.train, mixed precision, gradient accumulation and clipping,
 #   multi-GPU through accelerate, validation, logging, saving and resuming (§7.4).
 
-# dcttgen/infer.py — chapter 04
+# dc2t/infer.py — chapter 04
 def text_to_music(prompt: str, cfg, *, duration: int | None = None, bpm: int | None = None,
                   moods: list[str] | None = None, instruments: list[str] | None = None,
                   seed: int | None = None) -> tuple[Tensor, int]: ...     # (wav Float[N], sample_rate)

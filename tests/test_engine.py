@@ -11,8 +11,8 @@ from torch import nn
 from torch.utils.data import DataLoader, Dataset
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from dcttgen.config import ROOT, load_config  # noqa: E402
-from dcttgen.engine import fit, latest_checkpoint, load_weights, lr_at, make_optimizer  # noqa: E402
+from dc2t.config import ROOT, load_config  # noqa: E402
+from dc2t.engine import fit, latest_checkpoint, load_weights, lr_at, make_optimizer  # noqa: E402
 
 BASE = str(ROOT / "configs" / "base.yaml")
 V, D, T = 17, 8, 9

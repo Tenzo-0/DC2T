@@ -8,8 +8,8 @@ from types import SimpleNamespace
 
 import numpy as np
 
-from dcttgen.data.common import read_jsonl
-from dcttgen.data.quality import centre_excerpt, combine_scores, parse_fadtk_csv, run, select_discard
+from dc2t.data.common import read_jsonl
+from dc2t.data.quality import centre_excerpt, combine_scores, parse_fadtk_csv, run, select_discard
 
 try:
     import soundfile as sf

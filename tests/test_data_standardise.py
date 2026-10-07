@@ -11,7 +11,7 @@ import numpy as np
 
 try:
     import soundfile as sf
-    from dcttgen.data.standardise import standardise, standardise_one
+    from dc2t.data.standardise import standardise, standardise_one
 except ImportError:        # needs soundfile, soxr, librosa (and ffmpeg): skipped on a machine without them
     sf = None
 

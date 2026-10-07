@@ -1,4 +1,4 @@
-# DcttGen Implementation Guide — 01. Data Pipeline
+# DC2T Implementation Guide — 01. Data Pipeline
 
 > **For agentic workers:** REQUIRED SUB-SKILL: use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this chapter task by task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -10,8 +10,8 @@
 ## Global constraints
 
 - Output audio: FLAC, mono, `cfg.audio.sample_rate` Hz, **exactly `duration × sample_rate` samples** (contract §7.1). One sample off breaks `T = 25 × duration` in every later chapter.
-- Manifest rows follow contract §7.2 exactly; `python -m dcttgen.data.manifest --config C` exiting with code 0 is the acceptance test of milestone M1.
-- Clip durations are whole seconds in `[30, max_clip_seconds(position)]`; `plan_sections` and `max_clip_seconds` are imported from `dcttgen/plan.py` (chapter 03, contract §8.3), never re-implemented.
+- Manifest rows follow contract §7.2 exactly; `python -m dc2t.data.manifest --config C` exiting with code 0 is the acceptance test of milestone M1.
+- Clip durations are whole seconds in `[30, max_clip_seconds(position)]`; `plan_sections` and `max_clip_seconds` are imported from `dc2t/plan.py` (chapter 03, contract §8.3), never re-implemented.
 - Only recordings whose rights are written down as cleared enter the pipeline.
 - Every stage is resumable and notices when its input changed: an item is skipped only if a marker written *after* its outputs matches the input file and the settings.
 - API keys come from the environment (`OPENAI_API_KEY`); they are never written to a config, a log or the manifest.
@@ -97,18 +97,18 @@ Stage 6 is human: two people fill the instrument sheets. Quality is judged per *
 
 | File | Responsibility |
 |---|---|
-| `dcttgen/data/common.py` | atomic writes, JSONL, markers for safe re-runs, a failure-tolerant stage runner |
-| `dcttgen/data/vocab.py` | the mood vocabulary and its votes |
-| `dcttgen/data/provenance.py` | `provenance.csv`: rights gate |
-| `dcttgen/data/standardise.py` | decode → mono → resample → trim → level → FLAC |
-| `dcttgen/data/embed.py` | Essentia models → per-patch voice and mood activations |
-| `dcttgen/data/quality.py` | vocal gate and per-recording FAD |
-| `dcttgen/data/clips.py` | clip planning and sample-exact cutting |
-| `dcttgen/data/features.py` | tempo with confidence, mood words, patch slicing |
-| `dcttgen/data/annotate.py` | instrument sheets, propagation to clips, annotator agreement |
-| `dcttgen/data/captions.py` | template caption, caption validator, GPT-4o step with cache |
-| `dcttgen/data/manifest.py` | row assembly, validator, split, report |
-| `dcttgen/data/pipeline.py` | the command-line driver (Task 9) |
+| `dc2t/data/common.py` | atomic writes, JSONL, markers for safe re-runs, a failure-tolerant stage runner |
+| `dc2t/data/vocab.py` | the mood vocabulary and its votes |
+| `dc2t/data/provenance.py` | `provenance.csv`: rights gate |
+| `dc2t/data/standardise.py` | decode → mono → resample → trim → level → FLAC |
+| `dc2t/data/embed.py` | Essentia models → per-patch voice and mood activations |
+| `dc2t/data/quality.py` | vocal gate and per-recording FAD |
+| `dc2t/data/clips.py` | clip planning and sample-exact cutting |
+| `dc2t/data/features.py` | tempo with confidence, mood words, patch slicing |
+| `dc2t/data/annotate.py` | instrument sheets, propagation to clips, annotator agreement |
+| `dc2t/data/captions.py` | template caption, caption validator, GPT-4o step with cache |
+| `dc2t/data/manifest.py` | row assembly, validator, split, report |
+| `dc2t/data/pipeline.py` | the command-line driver (Task 9) |
 | `tests/test_data_*.py` | 33 tests |
 
 ## 3. Tasks
@@ -117,7 +117,7 @@ The data tests print `N tests passed` when run directly. Tests that need `soundf
 
 ### Task 1: shared helpers and the rights gate
 
-**Files:** Create `dcttgen/data/__init__.py` (empty), `dcttgen/data/common.py`, `dcttgen/data/provenance.py` · Test `tests/test_data_provenance.py`
+**Files:** Create `dc2t/data/__init__.py` (empty), `dc2t/data/common.py`, `dc2t/data/provenance.py` · Test `tests/test_data_provenance.py`
 
 **Interfaces:**
 - Produces: `read_jsonl`, `write_jsonl`, `tmp_name`, `fingerprint`, `load_marker`, `save_marker`, `run_stage(items, fn, *, workers=1, failed_path=None) -> (done, failed)`; `load_provenance(data_root, raw_dir="raw", allowed=…) -> (cleared_rows, problems)`.
@@ -140,7 +140,7 @@ import csv
 import tempfile
 from pathlib import Path
 
-from dcttgen.data.provenance import COLUMNS, load_provenance
+from dc2t.data.provenance import COLUMNS, load_provenance
 
 
 def write_csv(root: Path, rows: list[dict]):
@@ -205,10 +205,10 @@ if __name__ == "__main__":
 
 </details>
 
-- [ ] **Step 2: run it, expect failure** — `python tests/test_data_provenance.py` → `ModuleNotFoundError: No module named 'dcttgen.data'`
+- [ ] **Step 2: run it, expect failure** — `python tests/test_data_provenance.py` → `ModuleNotFoundError: No module named 'dc2t.data'`
 - [ ] **Step 3: implement**
 
-**`dcttgen/data/common.py`** — 77 lines
+**`dc2t/data/common.py`** — 77 lines
 
 ```python
 """Helpers shared by the data stages: atomic writes, JSONL, markers for safe re-runs, a failure-tolerant runner."""
@@ -290,7 +290,7 @@ def run_stage(items, fn, *, workers: int = 1, failed_path=None) -> tuple[int, in
     return len(items) - len(failed), len(failed)
 ```
 
-**`dcttgen/data/provenance.py`** — 55 lines
+**`dc2t/data/provenance.py`** — 55 lines
 
 ```python
 """data/provenance.csv: one row per raw recording. The pipeline only touches recordings whose rights are cleared."""
@@ -351,11 +351,11 @@ def load_provenance(data_root, raw_dir: str = "raw", allowed=("licensed_open", "
 ```
 
 - [ ] **Step 4: run it, expect a pass** — `python tests/test_data_provenance.py` → `2 tests passed`
-- [ ] **Step 5: commit** — `git add dcttgen/data tests/test_data_provenance.py && git commit -m "feat: data helpers and the rights gate"`
+- [ ] **Step 5: commit** — `git add dc2t/data tests/test_data_provenance.py && git commit -m "feat: data helpers and the rights gate"`
 
 ### Task 2: standardising a recording
 
-**Files:** Create `dcttgen/data/standardise.py` · Test `tests/test_data_standardise.py`
+**Files:** Create `dc2t/data/standardise.py` · Test `tests/test_data_standardise.py`
 
 **Interfaces:**
 - Consumes: `ffmpeg` and `ffprobe` on `PATH`; `cfg.audio.sample_rate`, `cfg.data.peak`, `cfg.data.top_db`; the helpers of Task 1.
@@ -382,7 +382,7 @@ import numpy as np
 
 try:
     import soundfile as sf
-    from dcttgen.data.standardise import standardise, standardise_one
+    from dc2t.data.standardise import standardise, standardise_one
 except ImportError:        # needs soundfile, soxr, librosa (and ffmpeg): skipped on a machine without them
     sf = None
 
@@ -485,7 +485,7 @@ if __name__ == "__main__":
 - [ ] **Step 2: run it, expect failure** — `python tests/test_data_standardise.py` → `skipped: …` four times (the module cannot be imported yet)
 - [ ] **Step 3: implement**
 
-**`dcttgen/data/standardise.py`** — 62 lines
+**`dc2t/data/standardise.py`** — 62 lines
 
 ```python
 """Standardise one raw recording: decode -> mono -> sample_rate -> trim silence -> peak level -> 16-bit FLAC."""
@@ -498,7 +498,7 @@ import numpy as np
 import soundfile as sf
 import soxr
 
-from dcttgen.data.common import fingerprint, load_marker, save_marker, tmp_name
+from dc2t.data.common import fingerprint, load_marker, save_marker, tmp_name
 
 
 def decode(path) -> tuple[np.ndarray, int, str]:
@@ -553,14 +553,14 @@ def standardise_one(item) -> None:
 ```
 
 - [ ] **Step 4: run it, expect a pass** — `python tests/test_data_standardise.py` → `4 tests passed` **with no `skipped:` line**
-- [ ] **Step 5: commit** — `git add dcttgen/data/standardise.py tests/test_data_standardise.py && git commit -m "feat: standardise recordings to mono 32 kHz FLAC"`
+- [ ] **Step 5: commit** — `git add dc2t/data/standardise.py tests/test_data_standardise.py && git commit -m "feat: standardise recordings to mono 32 kHz FLAC"`
 
 ### Task 3: cutting recordings into clips
 
-**Files:** Create `dcttgen/data/clips.py` · Test `tests/test_data_clips.py`
+**Files:** Create `dc2t/data/clips.py` · Test `tests/test_data_clips.py`
 
 **Interfaces:**
-- Consumes: `MIN_CLIP_S`, `max_clip_seconds` from `dcttgen/plan.py`.
+- Consumes: `MIN_CLIP_S`, `max_clip_seconds` from `dc2t/plan.py`.
 - Produces: `plan_clips(total, cost=None, slack=15) -> list[Clip]` with `Clip(position, start, duration)`; `boundary_costs(y, sr, total)`; `cut_recording(rec_flac, out_dir, recording_id, marker, slack=15) -> list[dict]` — rows with `clip_id, recording_id, position, start, duration, audio`.
 
 How a recording of `total` whole seconds is planned:
@@ -586,8 +586,8 @@ from pathlib import Path
 
 import numpy as np
 
-from dcttgen.data.clips import boundary_costs, clip_count, cut_recording, plan_clips, positions
-from dcttgen.plan import MIN_CLIP_S, max_clip_seconds
+from dc2t.data.clips import boundary_costs, clip_count, cut_recording, plan_clips, positions
+from dc2t.plan import MIN_CLIP_S, max_clip_seconds
 
 try:
     import soundfile as sf
@@ -692,10 +692,10 @@ if __name__ == "__main__":
 
 </details>
 
-- [ ] **Step 2: run it, expect failure** — `python tests/test_data_clips.py` → `ModuleNotFoundError: No module named 'dcttgen.data.clips'`
+- [ ] **Step 2: run it, expect failure** — `python tests/test_data_clips.py` → `ModuleNotFoundError: No module named 'dc2t.data.clips'`
 - [ ] **Step 3: implement**
 
-**`dcttgen/data/clips.py`** — 110 lines
+**`dc2t/data/clips.py`** — 110 lines
 
 ```python
 """Cut a standardised recording into whole-second clips (decision D4)."""
@@ -707,8 +707,8 @@ from pathlib import Path
 
 import numpy as np
 
-from dcttgen.data.common import fingerprint, load_marker, save_marker, tmp_name
-from dcttgen.plan import MIN_CLIP_S, max_clip_seconds
+from dc2t.data.common import fingerprint, load_marker, save_marker, tmp_name
+from dc2t.plan import MIN_CLIP_S, max_clip_seconds
 
 
 @dataclass(frozen=True)
@@ -811,11 +811,11 @@ def cut_recording(rec_flac, out_dir, recording_id: str, marker, slack: int = 15)
 ```
 
 - [ ] **Step 4: run it, expect a pass** — `python tests/test_data_clips.py` → `5 tests passed`
-- [ ] **Step 5: commit** — `git add dcttgen/data/clips.py tests/test_data_clips.py && git commit -m "feat: whole-second clips with positions"`
+- [ ] **Step 5: commit** — `git add dc2t/data/clips.py tests/test_data_clips.py && git commit -m "feat: whole-second clips with positions"`
 
 ### Task 4: Essentia activations, tempo and moods
 
-**Files:** Create `dcttgen/data/vocab.py`, `dcttgen/data/embed.py`, `dcttgen/data/features.py` · Test `tests/test_data_features.py`
+**Files:** Create `dc2t/data/vocab.py`, `dc2t/data/embed.py`, `dc2t/data/features.py` · Test `tests/test_data_features.py`
 
 **Interfaces:**
 - Consumes: the three Essentia model files and their `.json` metadata in one directory; `librosa`.
@@ -837,8 +837,8 @@ import sys
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))   # lets `python tests/test_x.py` run without installing the package
 import numpy as np
 
-from dcttgen.data.features import bpm_and_confidence, clip_patches, fold_bpm, pick_moods, vocal_fraction
-from dcttgen.data.vocab import MOOD_VOTES, MOODS
+from dc2t.data.features import bpm_and_confidence, clip_patches, fold_bpm, pick_moods, vocal_fraction
+from dc2t.data.vocab import MOOD_VOTES, MOODS
 
 # The 56 classes of mtg_jamendo_moodtheme-discogs-effnet-1, copied from the "classes" list of its JSON file
 # (https://essentia.upf.edu/models/classification-heads/mtg_jamendo_moodtheme/mtg_jamendo_moodtheme-discogs-effnet-1.json)
@@ -926,14 +926,14 @@ if __name__ == "__main__":
 
 </details>
 
-- [ ] **Step 2: run it, expect failure** — `python tests/test_data_features.py` → `ModuleNotFoundError: No module named 'dcttgen.data.features'`
+- [ ] **Step 2: run it, expect failure** — `python tests/test_data_features.py` → `ModuleNotFoundError: No module named 'dc2t.data.features'`
 - [ ] **Step 3: implement**
 
-**`dcttgen/data/vocab.py`** — 21 lines
+**`dc2t/data/vocab.py`** — 21 lines
 
 ```python
 """Closed vocabularies of the manifest (contract 7.2)."""
-from dcttgen.plan import INSTRUMENTS  # noqa: F401 - the six canonical names, in the contract's order; defined once, in plan.py
+from dc2t.plan import INSTRUMENTS  # noqa: F401 - the six canonical names, in the contract's order; defined once, in plan.py
 
 # Mood word -> labels of Essentia's mtg_jamendo_moodtheme model whose probabilities vote for it.
 # Every label below is one of the model's 56 classes (checked by tests/test_data_features.py).
@@ -955,14 +955,14 @@ MOOD_VOTES = {
 MOODS = tuple(MOOD_VOTES)   # the closed mood vocabulary: one lowercase word each
 ```
 
-**`dcttgen/data/features.py`** — 60 lines
+**`dc2t/data/features.py`** — 60 lines
 
 ```python
 """Per-clip musical features. The tempo comes from librosa; the vocal and mood decisions are plain numpy
 functions applied to the outputs of Essentia's models (embed.py), so they run and are tested without TensorFlow."""
 import numpy as np
 
-from dcttgen.data.vocab import MOOD_VOTES
+from dc2t.data.vocab import MOOD_VOTES
 
 
 def fold_bpm(bpm: float, lo: float = 40.0, hi: float = 200.0) -> float:
@@ -1020,7 +1020,7 @@ def clip_patches(a: np.ndarray, total_s: float, start: int, duration: int) -> np
     return a[i:max(j, i + 1)]
 ```
 
-**`dcttgen/data/embed.py`** — 31 lines
+**`dc2t/data/embed.py`** — 31 lines
 
 ```python
 """Essentia models over a standardised recording -> work/embed/<recording_id>.npz with
@@ -1057,13 +1057,13 @@ def embed(flac, out, models_dir) -> None:
 ```
 
 - [ ] **Step 4: run it, expect a pass** — `python tests/test_data_features.py` → `5 tests passed`
-- [ ] **Step 5: commit** — `git add dcttgen/data/vocab.py dcttgen/data/embed.py dcttgen/data/features.py tests/test_data_features.py && git commit -m "feat: tempo with confidence and a closed mood vocabulary"`
+- [ ] **Step 5: commit** — `git add dc2t/data/vocab.py dc2t/data/embed.py dc2t/data/features.py tests/test_data_features.py && git commit -m "feat: tempo with confidence and a closed mood vocabulary"`
 
 **Not executed:** `embed.py` (Essentia has no Windows wheel). The node names, class order and sample rate in it are the ones in the models' own metadata (§1.3); `MonoLoader(filename=, sampleRate=, resampleQuality=)` is **Unverified** — compare with the usage snippet on each model's page before the first run. Download the `.pb` and `.json` files from the URLs in the metadata, for example `https://essentia.upf.edu/models/classification-heads/voice_instrumental/voice_instrumental-discogs-effnet-1.pb`.
 
 ### Task 5: the quality gate
 
-**Files:** Create `dcttgen/data/quality.py` · Test `tests/test_data_quality.py`
+**Files:** Create `dc2t/data/quality.py` · Test `tests/test_data_quality.py`
 
 **Interfaces:**
 - Consumes: `work/rec/*.flac`, `work/embed/*.npz`; `cfg.data.vocal_*`, `cfg.data.fad_*`; the `fadtk` command.
@@ -1089,8 +1089,8 @@ from types import SimpleNamespace
 
 import numpy as np
 
-from dcttgen.data.common import read_jsonl
-from dcttgen.data.quality import centre_excerpt, combine_scores, parse_fadtk_csv, run, select_discard
+from dc2t.data.common import read_jsonl
+from dc2t.data.quality import centre_excerpt, combine_scores, parse_fadtk_csv, run, select_discard
 
 try:
     import soundfile as sf
@@ -1186,10 +1186,10 @@ if __name__ == "__main__":
 
 </details>
 
-- [ ] **Step 2: run it, expect failure** — `python tests/test_data_quality.py` → `ModuleNotFoundError: No module named 'dcttgen.data.quality'`
+- [ ] **Step 2: run it, expect failure** — `python tests/test_data_quality.py` → `ModuleNotFoundError: No module named 'dc2t.data.quality'`
 - [ ] **Step 3: implement**
 
-**`dcttgen/data/quality.py`** — 113 lines
+**`dc2t/data/quality.py`** — 113 lines
 
 ```python
 """Quality filter (plan 3.5): vocal gate, then per-recording Frechet Audio Distance from three embeddings."""
@@ -1200,8 +1200,8 @@ from pathlib import Path
 
 import numpy as np
 
-from dcttgen.data.common import write_jsonl
-from dcttgen.data.features import vocal_fraction
+from dc2t.data.common import write_jsonl
+from dc2t.data.features import vocal_fraction
 
 
 def centre_excerpt(y: np.ndarray, seconds: int, sr: int) -> np.ndarray:
@@ -1308,13 +1308,13 @@ def run(cfg, fad=run_fadtk) -> list[dict]:
 ```
 
 - [ ] **Step 4: run it, expect a pass** — `python tests/test_data_quality.py` → `5 tests passed`
-- [ ] **Step 5: commit** — `git add dcttgen/data/quality.py tests/test_data_quality.py && git commit -m "feat: vocal gate and combined per-recording FAD"`
+- [ ] **Step 5: commit** — `git add dc2t/data/quality.py tests/test_data_quality.py && git commit -m "feat: vocal gate and combined per-recording FAD"`
 
 **Not executed:** `run_fadtk` (the real tool). The stage's logic ran with an injected fake.
 
 ### Task 6: instrument annotation
 
-**Files:** Create `dcttgen/data/annotate.py` · Test `tests/test_data_annotate.py`
+**Files:** Create `dc2t/data/annotate.py` · Test `tests/test_data_annotate.py`
 
 **Interfaces:**
 - Produces: `write_sheet(path, recording_ids)`; `parse_cell`; `load_annotations(paths)`; `clip_instruments(row, start, duration, min_overlap=10) -> list[str]`; `agreement(rows_a, rows_b)`; `in_overlap_set(recording_id, percent=10)`.
@@ -1341,9 +1341,9 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))   # lets `p
 import tempfile
 from pathlib import Path
 
-from dcttgen.data.annotate import (agreement, clip_instruments, cohen_kappa, in_overlap_set, load_annotations,
+from dc2t.data.annotate import (agreement, clip_instruments, cohen_kappa, in_overlap_set, load_annotations,
                                    parse_cell, write_sheet)
-from dcttgen.data.vocab import INSTRUMENTS
+from dc2t.data.vocab import INSTRUMENTS
 
 
 def test_parse_cell():
@@ -1405,10 +1405,10 @@ if __name__ == "__main__":
 
 </details>
 
-- [ ] **Step 2: run it, expect failure** — `python tests/test_data_annotate.py` → `ModuleNotFoundError: No module named 'dcttgen.data.annotate'`
+- [ ] **Step 2: run it, expect failure** — `python tests/test_data_annotate.py` → `ModuleNotFoundError: No module named 'dc2t.data.annotate'`
 - [ ] **Step 3: implement**
 
-**`dcttgen/data/annotate.py`** — 84 lines
+**`dc2t/data/annotate.py`** — 84 lines
 
 ```python
 """Manual instrument annotation: file format, propagation from recordings to clips, agreement between annotators.
@@ -1420,7 +1420,7 @@ import csv
 import hashlib
 from pathlib import Path
 
-from dcttgen.data.vocab import INSTRUMENTS
+from dc2t.data.vocab import INSTRUMENTS
 
 COLUMNS = ("recording_id", *INSTRUMENTS, "other", "notes")      # `other`: a loud instrument that is not one of the six
 
@@ -1498,11 +1498,11 @@ def write_sheet(path, recording_ids) -> None:
 ```
 
 - [ ] **Step 4: run it, expect a pass** — `python tests/test_data_annotate.py` → `4 tests passed`
-- [ ] **Step 5: commit** — `git add dcttgen/data/annotate.py tests/test_data_annotate.py && git commit -m "feat: instrument sheets and annotator agreement"`
+- [ ] **Step 5: commit** — `git add dc2t/data/annotate.py tests/test_data_annotate.py && git commit -m "feat: instrument sheets and annotator agreement"`
 
 ### Task 7: captions
 
-**Files:** Create `dcttgen/data/captions.py` · Test `tests/test_data_captions.py`
+**Files:** Create `dc2t/data/captions.py` · Test `tests/test_data_captions.py`
 
 **Interfaces:**
 - Produces: `template_caption(moods, instruments, bpm) -> str`; `tempo_word(bpm)`; `validate_caption(caption, instruments, moods=()) -> list[str]`; `caption_one(row, client, model, attempts, bands)`; `generate(rows, client, cache_path, *, model, attempts=3, workers=8, bands=(70, 110)) -> int`; `cached_captions(rows, cache_path, model, bands) -> {clip_id: caption}`.
@@ -1525,7 +1525,7 @@ from pathlib import Path
 from types import SimpleNamespace as NS
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from dcttgen.data.captions import cached_captions, caption_one, generate, template_caption, tempo_word, validate_caption  # noqa: E402
+from dc2t.data.captions import cached_captions, caption_one, generate, template_caption, tempo_word, validate_caption  # noqa: E402
 
 PLAN_EXAMPLE = "A joyful and uplifting Don ca tai tu piece with fast tempo, performed by zither, two-string fiddle, and moon-shaped lute"
 THREE = ["zither", "two-string fiddle", "moon-shaped lute"]
@@ -1613,10 +1613,10 @@ if __name__ == "__main__":
 
 </details>
 
-- [ ] **Step 2: run it, expect failure** — `python tests/test_data_captions.py` → `ModuleNotFoundError: No module named 'dcttgen.data.captions'`
+- [ ] **Step 2: run it, expect failure** — `python tests/test_data_captions.py` → `ModuleNotFoundError: No module named 'dc2t.data.captions'`
 - [ ] **Step 3: implement**
 
-**`dcttgen/data/captions.py`** — 144 lines
+**`dc2t/data/captions.py`** — 144 lines
 
 ```python
 """Captions: a deterministic template (free; the pilot uses it) and the plan's GPT-4o step with validation."""
@@ -1626,7 +1626,7 @@ import re
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
-from dcttgen.data.common import read_jsonl
+from dc2t.data.common import read_jsonl
 
 MAX_WORDS = 60
 # Every English word that counts as a mention of one of the six instruments. "gong" alone is read as gong ban.
@@ -1766,17 +1766,17 @@ def cached_captions(rows, cache_path, model: str, bands=(70, 110)) -> dict[str, 
 ```
 
 - [ ] **Step 4: run it, expect a pass** — `python tests/test_data_captions.py` → `test_data_captions: 4 tests passed`
-- [ ] **Step 5: commit** — `git add dcttgen/data/captions.py tests/test_data_captions.py && git commit -m "feat: template and validated GPT-4o captions"`
+- [ ] **Step 5: commit** — `git add dc2t/data/captions.py tests/test_data_captions.py && git commit -m "feat: template and validated GPT-4o captions"`
 
 **Cost of the GPT-4o step (estimate).** One request is roughly 200 input tokens (the instructions plus the facts) and 40 output tokens. For 28,000 clips with a few retries: about 6–7 million input and 1.2–1.5 million output tokens. Multiply by the current per-million prices on OpenAI's pricing page — **Unverified** here; the `input_tokens` and `output_tokens` recorded in `captions.jsonl` give the exact total after the pilot.
 
 ### Task 8: the manifest, its validator and the split
 
-**Files:** Create `dcttgen/data/manifest.py` · Test `tests/test_data_manifest.py`
+**Files:** Create `dc2t/data/manifest.py` · Test `tests/test_data_manifest.py`
 
 **Interfaces:**
 - Consumes: clip rows (Task 3), features (Task 4), instruments (Task 6), captions (Task 7), `Plan`, `plan_sections`, `max_clip_seconds`, `MOODS`.
-- Produces: `split_of(group_id, val_percent=2.0) -> "train" | "val"`; `validate_row(row, audio=None, sample_rate=None) -> list[str]`; `validate_manifest(rows, data_root=None, sample_rate=None, probe=probe_flac) -> list[str]`; `build_rows(clips, features, instruments, captions, groups=None, val_percent=2.0) -> (rows, dropped)`; `write_manifests(rows, data_root, sample_rate=None)`; `report(rows) -> dict`; `python -m dcttgen.data.manifest --config C`.
+- Produces: `split_of(group_id, val_percent=2.0) -> "train" | "val"`; `validate_row(row, audio=None, sample_rate=None) -> list[str]`; `validate_manifest(rows, data_root=None, sample_rate=None, probe=probe_flac) -> list[str]`; `build_rows(clips, features, instruments, captions, groups=None, val_percent=2.0) -> (rows, dropped)`; `write_manifests(rows, data_root, sample_rate=None)`; `report(rows) -> dict`; `python -m dc2t.data.manifest --config C`.
 
 The validator enforces every rule of contract §7.1 and §7.2: the field rules (through `Plan.from_manifest`, so the manifest and the language model can never disagree about what a valid plan is), the mood vocabulary, intro and outro only where the position allows them, unique clip ids, one split per recording, and — when given the data root — that each file exists and is mono, at the right rate, with exactly `duration × rate` samples. `write_manifests` writes nothing if a single rule is broken.
 
@@ -1792,8 +1792,8 @@ import tempfile
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from dcttgen.data.common import read_jsonl  # noqa: E402
-from dcttgen.data.manifest import build_rows, report, split_of, validate_manifest, validate_row, write_manifests  # noqa: E402
+from dc2t.data.common import read_jsonl  # noqa: E402
+from dc2t.data.manifest import build_rows, report, split_of, validate_manifest, validate_row, write_manifests  # noqa: E402
 
 CAPTION = "A joyful and uplifting Don ca tai tu piece with fast tempo, performed by zither, two-string fiddle, and moon-shaped lute"
 
@@ -1907,15 +1907,15 @@ if __name__ == "__main__":
 
 </details>
 
-- [ ] **Step 2: run it, expect failure** — `python tests/test_data_manifest.py` → `ModuleNotFoundError: No module named 'dcttgen.data.manifest'`
+- [ ] **Step 2: run it, expect failure** — `python tests/test_data_manifest.py` → `ModuleNotFoundError: No module named 'dc2t.data.manifest'`
 - [ ] **Step 3: implement**
 
-**`dcttgen/data/manifest.py`** — 172 lines
+**`dc2t/data/manifest.py`** — 172 lines
 
 ```python
 """The manifest (contract 7.2): assemble the rows, enforce every rule, split by recording, write the three files, report.
 
-python -m dcttgen.data.manifest --config C      validates manifest/all.jsonl and the audio files; exit code 0 = milestone M1 is met
+python -m dc2t.data.manifest --config C      validates manifest/all.jsonl and the audio files; exit code 0 = milestone M1 is met
 """
 import argparse
 import hashlib
@@ -1924,9 +1924,9 @@ import re
 from collections import Counter
 from pathlib import Path
 
-from dcttgen.data.common import read_jsonl, write_jsonl
-from dcttgen.data.vocab import MOODS
-from dcttgen.plan import MIN_CLIP_S, POSITIONS, Plan, max_clip_seconds, plan_sections
+from dc2t.data.common import read_jsonl, write_jsonl
+from dc2t.data.vocab import MOODS
+from dc2t.plan import MIN_CLIP_S, POSITIONS, Plan, max_clip_seconds, plan_sections
 
 FIELDS = ("clip_id", "recording_id", "position", "audio", "duration", "bpm", "moods", "instruments", "sections", "caption", "split")
 CLIP_ID = re.compile(r"[A-Za-z0-9_]+")
@@ -2072,7 +2072,7 @@ def main(argv=None) -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--config", required=True)
     args = ap.parse_args(argv)
-    from dcttgen.config import load_config      # chapter 04
+    from dc2t.config import load_config      # chapter 04
     cfg = load_config(args.config)
     rows = read_jsonl(Path(cfg.paths.data_root) / "manifest" / "all.jsonl")
     problems = validate_manifest(rows, cfg.paths.data_root, cfg.audio.sample_rate)
@@ -2088,15 +2088,15 @@ if __name__ == "__main__":
 ```
 
 - [ ] **Step 4: run it, expect a pass** — `python tests/test_data_manifest.py` → `test_data_manifest: 4 tests passed`
-- [ ] **Step 5: commit** — `git add dcttgen/data/manifest.py tests/test_data_manifest.py && git commit -m "feat: manifest assembly, validator and leak-free split"`
+- [ ] **Step 5: commit** — `git add dc2t/data/manifest.py tests/test_data_manifest.py && git commit -m "feat: manifest assembly, validator and leak-free split"`
 
 ### Task 9: the pipeline driver
 
-**Files:** Create `dcttgen/data/pipeline.py` · Test `tests/test_data_pipeline.py`
+**Files:** Create `dc2t/data/pipeline.py` · Test `tests/test_data_pipeline.py`
 
 **Interfaces:**
 - Consumes: every function above; `load_config` (chapter 04).
-- Produces: `python -m dcttgen.data.pipeline <stage> --config C [--workers N]`.
+- Produces: `python -m dc2t.data.pipeline <stage> --config C [--workers N]`.
 
 This file is glue with no decisions of its own; the table fixes what each stage reads, calls and writes.
 
@@ -2112,10 +2112,10 @@ This file is glue with no decisions of its own; the table fixes what each stage 
 | `manifest` | all of the above, `provenance.csv` | `clip_instruments`, `template_caption`, `cached_captions` (a valid GPT caption replaces the template), `build_rows`, `write_manifests` | `manifest/*.jsonl`, `work/dropped.jsonl`, `work/report.json` |
 
 - [ ] **Step 1: write the failing test** — `test_pipeline_runs_end_to_end_on_synthetic_recordings`: write three sine-tone recordings (40 s, 200 s, 700 s) and a `provenance.csv` into a temporary `data/`, run `standardise`, then `cut`, `features`, `manifest` with the `embed` and `gate` outputs supplied as files (`p_voice` zeros, uniform `mood`, every recording `ok`) and a one-row-per-recording annotation sheet marking `zither` as `1`. Assert: `validate_manifest(read_jsonl("manifest/all.jsonl"), data_root, 32000) == []`; the 700 s recording yields clips with positions `first, middle, last`; every caption equals `template_caption(...)` of its row; running `manifest` twice gives identical files.
-- [ ] **Step 2: run it, expect failure** — `ModuleNotFoundError: No module named 'dcttgen.data.pipeline'`
+- [ ] **Step 2: run it, expect failure** — `ModuleNotFoundError: No module named 'dc2t.data.pipeline'`
 - [ ] **Step 3: implement** `main(argv=None)` with one small function per row of the table. Print one summary line per stage (`done`, `failed`, `skipped`).
 - [ ] **Step 4: run it, expect a pass**
-- [ ] **Step 5: commit** — `git add dcttgen/data/pipeline.py tests/test_data_pipeline.py && git commit -m "feat: data pipeline driver"`
+- [ ] **Step 5: commit** — `git add dc2t/data/pipeline.py tests/test_data_pipeline.py && git commit -m "feat: data pipeline driver"`
 
 **Not written in this guide:** the body of `pipeline.py` and its test. Everything it calls is tested above.
 
@@ -2124,17 +2124,17 @@ This file is glue with no decisions of its own; the table fixes what each stage 
 ```bash
 C=configs/bootstrap_k1.yaml,configs/pilot.yaml          # any overlay works: the data stages read only audio.* and data.*
 
-python -m dcttgen.data.pipeline standardise --config $C --workers 8
-python -m dcttgen.data.pipeline embed       --config $C      # Linux, Essentia
-python -m dcttgen.data.pipeline gate        --config $C      # Linux, fadtk; listen to files near the threshold in work/gate.jsonl
-python -m dcttgen.data.pipeline cut         --config $C
-python -m dcttgen.data.pipeline features    --config $C --workers 8
-python -m dcttgen.data.pipeline sheets      --config $C      # then two people annotate; see Task 6
-python -m dcttgen.data.pipeline manifest    --config $C      # template captions: the pilot can stop here
+python -m dc2t.data.pipeline standardise --config $C --workers 8
+python -m dc2t.data.pipeline embed       --config $C      # Linux, Essentia
+python -m dc2t.data.pipeline gate        --config $C      # Linux, fadtk; listen to files near the threshold in work/gate.jsonl
+python -m dc2t.data.pipeline cut         --config $C
+python -m dc2t.data.pipeline features    --config $C --workers 8
+python -m dc2t.data.pipeline sheets      --config $C      # then two people annotate; see Task 6
+python -m dc2t.data.pipeline manifest    --config $C      # template captions: the pilot can stop here
 export OPENAI_API_KEY=...                                    # never put the key in a file under version control
-python -m dcttgen.data.pipeline captions    --config $C
-python -m dcttgen.data.pipeline manifest    --config $C      # again: valid GPT captions replace the templates
-python -m dcttgen.data.manifest --config $C                  # exit code 0 = milestone M1
+python -m dc2t.data.pipeline captions    --config $C
+python -m dc2t.data.pipeline manifest    --config $C      # again: valid GPT captions replace the templates
+python -m dc2t.data.manifest --config $C                  # exit code 0 = milestone M1
 ```
 
 **Sizes and times (estimates, not measurements).**

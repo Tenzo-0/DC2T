@@ -9,7 +9,7 @@ from safetensors.torch import load_model
 from torch import nn
 from transformers import AutoModelForCausalLM
 
-from dcttgen.lm.vocab import Vocab
+from dc2t.lm.vocab import Vocab
 
 
 def resize_for_audio(lm, vocab: Vocab) -> None:

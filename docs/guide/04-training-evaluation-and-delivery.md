@@ -1,4 +1,4 @@
-# DcttGen Implementation Guide — 04. Training, Inference, Evaluation and Delivery
+# DC2T Implementation Guide — 04. Training, Inference, Evaluation and Delivery
 
 > **For agentic workers:** REQUIRED SUB-SKILL: use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this chapter task by task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -95,7 +95,7 @@ One file, `configs/base.yaml`, lists **every** key with its default and a commen
 
 **How much to trust FD on a 2 % split.** A Fréchet distance compares two covariance matrices and needs far more embedding vectors than embedding dimensions. With the full dataset the split is about 560 clips of several minutes — workable. With the pilot's handful of clips the number is noise: report `n` beside every score, and do not draw conclusions from the pilot's FD.
 
-The results table to fill (the plan's Table 3 values for DcttGen are FAD 1.291, KLD 0.472, CLAP 0.394):
+The results table to fill (the plan's Table 3 values for DC2T are FAD 1.291, KLD 0.472, CLAP 0.394):
 
 | Model | n | FD-openl3 ↓ | KL-PaSST ↓ | CLAP score ↑ |
 |---|---|---|---|---|
@@ -103,8 +103,8 @@ The results table to fill (the plan's Table 3 values for DcttGen are FAD 1.291, 
 | MusicGen-Medium | | | | |
 | AudioLDM2-Music | | | | |
 | Stable Audio Open | | | | |
-| DcttGen (bootstrap, K = 1) | | | | |
-| DcttGen (plan, K = 4) | | | | |
+| DC2T (bootstrap, K = 1) | | | | |
+| DC2T (plan, K = 4) | | | | |
 
 ## 2. File map
 
@@ -112,17 +112,17 @@ The results table to fill (the plan's Table 3 values for DcttGen are FAD 1.291, 
 |---|---|
 | `pyproject.toml`, `.gitignore` | the package and what stays out of git |
 | `configs/base.yaml`, `bootstrap_k1.yaml`, `plan_k4.yaml`, `pilot.yaml` | every key; the two codec configurations; the small-scale overlay |
-| `dcttgen/config.py` | `load_config` |
-| `dcttgen/engine.py` | `fit`, `lr_at`, `make_optimizer`, `latest_checkpoint`, `load_weights` |
-| `dcttgen/infer.py` | `prompt_to_codes`, `codes_to_wav`, `text_to_music`, the command line |
-| `dcttgen/eval/run.py` | the three evaluation stages |
+| `dc2t/config.py` | `load_config` |
+| `dc2t/engine.py` | `fit`, `lr_at`, `make_optimizer`, `latest_checkpoint`, `load_weights` |
+| `dc2t/infer.py` | `prompt_to_codes`, `codes_to_wav`, `text_to_music`, the command line |
+| `dc2t/eval/run.py` | the three evaluation stages |
 | `tests/test_config.py`, `test_engine.py`, `test_infer.py`, `test_integration.py`, `ddp_check.py` | 23 tests and one two-process check |
 
 ## 3. Tasks
 
 ### Task 0: repository, environments, third-party code
 
-**Files:** Create `pyproject.toml`, `.gitignore`, `dcttgen/__init__.py` (empty), `dcttgen/eval/__init__.py` (empty)
+**Files:** Create `pyproject.toml`, `.gitignore`, `dc2t/__init__.py` (empty), `dc2t/eval/__init__.py` (empty)
 
 **`pyproject.toml`** — 29 lines
 
@@ -132,9 +132,9 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "dcttgen"
+name = "dc2t"
 version = "0.1.0"
-description = "DcttGen: text-to-music for Don ca tai tu"
+description = "DC2T: text-to-music for Don ca tai tu"
 requires-python = ">=3.10"
 # Only what every environment needs. transformers is NOT here: the language-model environment uses 4.57.1, the codec environment keeps MuCodec's pin.
 dependencies = [
@@ -151,7 +151,7 @@ lm = ["transformers==4.57.1"]
 dev = ["pytest"]
 
 [tool.setuptools.packages.find]
-include = ["dcttgen*"]
+include = ["dc2t*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -161,7 +161,7 @@ pythonpath = ["."]
 **`.gitignore`** — 15 lines
 
 ```text
-# data, runs, weights and secrets never go into git (leading slash: top level only, so dcttgen/data/ stays tracked)
+# data, runs, weights and secrets never go into git (leading slash: top level only, so dc2t/data/ stays tracked)
 /data/
 /runs/
 third_party/MuCodec/
@@ -182,9 +182,9 @@ __pycache__/
 
 ```bash
 git init
-mkdir -p dcttgen/data dcttgen/codec dcttgen/lm dcttgen/eval tests configs third_party
-touch dcttgen/__init__.py dcttgen/data/__init__.py dcttgen/codec/__init__.py dcttgen/lm/__init__.py dcttgen/eval/__init__.py
-git add pyproject.toml .gitignore dcttgen && git commit -m "chore: scaffold"
+mkdir -p dc2t/data dc2t/codec dc2t/lm dc2t/eval tests configs third_party
+touch dc2t/__init__.py dc2t/data/__init__.py dc2t/codec/__init__.py dc2t/lm/__init__.py dc2t/eval/__init__.py
+git add pyproject.toml .gitignore dc2t && git commit -m "chore: scaffold"
 ```
 
 - [ ] **Step 2: third-party code, pinned** (**Not executed** in this guide)
@@ -223,14 +223,14 @@ pip install -r third_party/stable-audio-metrics/requirements.txt && pip install 
 - [ ] **Step 4: import smoke tests** — each must print `ok`
 
 ```bash
-.venv-lm/bin/python    -c "import dcttgen.lm.model, dcttgen.engine; print('ok')"
-.venv-codec/bin/python -c "import fairseq, diffusers, dcttgen.engine, dcttgen.codec.codec; print('ok')"
-.venv-eval/bin/python  -c "import openl3, laion_clap, dcttgen.eval.run; print('ok')"
+.venv-lm/bin/python    -c "import dc2t.lm.model, dc2t.engine; print('ok')"
+.venv-codec/bin/python -c "import fairseq, diffusers, dc2t.engine, dc2t.codec.codec; print('ok')"
+.venv-eval/bin/python  -c "import openl3, laion_clap, dc2t.eval.run; print('ok')"
 ```
 
 ### Task 1: configuration
 
-**Files:** Create `configs/base.yaml`, `configs/bootstrap_k1.yaml`, `configs/plan_k4.yaml`, `configs/pilot.yaml`, `dcttgen/config.py` · Test `tests/test_config.py`
+**Files:** Create `configs/base.yaml`, `configs/bootstrap_k1.yaml`, `configs/plan_k4.yaml`, `configs/pilot.yaml`, `dc2t/config.py` · Test `tests/test_config.py`
 
 **Interfaces:**
 - Produces: `load_config(path, overrides=()) -> Config` (contract §9); `Config` is a `dict` with attribute access and `to_dict()`; `ROOT`.
@@ -309,7 +309,7 @@ train:                            # Plan 3.6 - the same optimiser for both model
   eval_every: 500
   save_every: 1000
   keep_last: 2                    # newest checkpoints kept; 0 keeps all
-infer:                            # dcttgen.infer
+infer:                            # dc2t.infer
   temperature: 1.0                # 0 = greedy (the plan's argmax); Decision: sample, see chapter 03
   top_k: 250                      # Decision: a starting point, tune by ear
   top_p: null
@@ -317,7 +317,7 @@ infer:                            # dcttgen.infer
   cfg_scale: null                 # null = rf.decode_cfg
   dtype: float32                  # dtype of the language model at inference: float32 | bfloat16 | float16
   max_prompt_chars: 500           # about the 128-token caption cap for English text
-eval:                             # dcttgen.eval.run
+eval:                             # dc2t.eval.run
   split: val                      # manifest/<split>.jsonl
   num_prompts: 0                  # 0 = every clip of the split, else a seeded random subset of this size
   seconds: 0                      # 0 = each clip's own plan and duration (the plan's protocol); 30..300 = every piece that long
@@ -367,7 +367,7 @@ import tempfile
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from dcttgen.config import ROOT, load_config  # noqa: E402
+from dc2t.config import ROOT, load_config  # noqa: E402
 
 BASE = str(ROOT / "configs" / "base.yaml")
 OVERLAYS = ROOT / "configs"
@@ -446,10 +446,10 @@ if __name__ == "__main__":
 
 </details>
 
-- [ ] **Step 2: run it, expect failure** — `python tests/test_config.py` → `ModuleNotFoundError: No module named 'dcttgen.config'`
+- [ ] **Step 2: run it, expect failure** — `python tests/test_config.py` → `ModuleNotFoundError: No module named 'dc2t.config'`
 - [ ] **Step 3: implement**
 
-**`dcttgen/config.py`** — 102 lines
+**`dc2t/config.py`** — 102 lines
 
 ```python
 """Configuration (contract section 9): configs/base.yaml <- overlay file(s) <- "a.b=value" overrides.
@@ -557,11 +557,11 @@ def load_config(path: str, overrides: list[str] = ()) -> Config:
 ```
 
 - [ ] **Step 4: run it, expect a pass** — `python tests/test_config.py` → `test_config.py: 5 passed`
-- [ ] **Step 5: commit** — `git add configs dcttgen/config.py tests/test_config.py && git commit -m "feat: strict typed configuration"`
+- [ ] **Step 5: commit** — `git add configs dc2t/config.py tests/test_config.py && git commit -m "feat: strict typed configuration"`
 
 ### Task 2: the training loop
 
-**Files:** Create `dcttgen/engine.py` · Test `tests/test_engine.py`, `tests/ddp_check.py`
+**Files:** Create `dc2t/engine.py` · Test `tests/test_engine.py`, `tests/ddp_check.py`
 
 **Interfaces:**
 - Consumes: `cfg.train.*`; any `nn.Module` whose `forward(batch: dict)` returns a dict with `"loss"`; a `DataLoader` over a map-style dataset whose order depends only on the epoch (a batch sampler with `set_epoch`, as chapter 03's `TokenBudgetSampler`, is supported).
@@ -586,8 +586,8 @@ from torch import nn
 from torch.utils.data import DataLoader, Dataset
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from dcttgen.config import ROOT, load_config  # noqa: E402
-from dcttgen.engine import fit, latest_checkpoint, load_weights, lr_at, make_optimizer  # noqa: E402
+from dc2t.config import ROOT, load_config  # noqa: E402
+from dc2t.engine import fit, latest_checkpoint, load_weights, lr_at, make_optimizer  # noqa: E402
 
 BASE = str(ROOT / "configs" / "base.yaml")
 V, D, T = 17, 8, 9
@@ -794,10 +794,10 @@ if __name__ == "__main__":
 
 </details>
 
-- [ ] **Step 2: run it, expect failure** — `python tests/test_engine.py` → `ModuleNotFoundError: No module named 'dcttgen.engine'`
+- [ ] **Step 2: run it, expect failure** — `python tests/test_engine.py` → `ModuleNotFoundError: No module named 'dc2t.engine'`
 - [ ] **Step 3: implement**
 
-**`dcttgen/engine.py`** — 213 lines
+**`dc2t/engine.py`** — 213 lines
 
 ```python
 """The one training loop (contract section 9). fit() trains any nn.Module whose forward(batch: dict) returns a dict with "loss".
@@ -1039,7 +1039,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from test_engine import TinyLM, cfg_for, loader  # noqa: E402
 
-from dcttgen.engine import fit, latest_checkpoint  # noqa: E402
+from dc2t.engine import fit, latest_checkpoint  # noqa: E402
 
 
 class Stop(Exception):
@@ -1088,7 +1088,7 @@ def worker(rank, world, store, shared):
 
 
 if __name__ == "__main__":
-    shared = Path(tempfile.gettempdir()) / "dcttgen_ddp_check"
+    shared = Path(tempfile.gettempdir()) / "dc2t_ddp_check"
     shutil.rmtree(shared, ignore_errors=True)
     shared.mkdir()
     mp.spawn(worker, args=(2, (shared / "store").as_uri(), str(shared)), nprocs=2)
@@ -1099,17 +1099,17 @@ if __name__ == "__main__":
 Run `python tests/ddp_check.py`; it must end with `DDP CHECK OK`. It starts two CPU processes, checks that their weights stay identical (gradients are synchronised), that a crashed two-process run resumes to the same weights, that each process saved its own random state, and that only the main process logged.
 **Not executed:** on the authoring machine (Windows) it stops at `RuntimeError: makeDeviceForHostname(): unsupported gloo device` before reaching `fit`. **Everything about `fit` on more than one process is therefore Unverified** until this check passes on Linux. Do it in milestone M0, before any multi-GPU run.
 
-- [ ] **Step 6: commit** — `git add dcttgen/engine.py tests/test_engine.py tests/ddp_check.py && git commit -m "feat: one training loop with exact resume"`
+- [ ] **Step 6: commit** — `git add dc2t/engine.py tests/test_engine.py tests/ddp_check.py && git commit -m "feat: one training loop with exact resume"`
 
 ### Task 3: inference
 
-**Files:** Create `dcttgen/infer.py` · Test `tests/test_infer.py` (first three tests)
+**Files:** Create `dc2t/infer.py` · Test `tests/test_infer.py` (first three tests)
 
 **Interfaces:**
 - Consumes: `generate_codes`, `load_lm`, `Vocab` (chapter 03); `Codec` (chapter 02); `Plan`, `plan_sections`; `cfg.infer.*`.
-- Produces: `prompt_to_codes(prompt, cfg, *, duration, bpm, moods, instruments, seed) -> (Plan, Long[K, T])`; `codes_to_wav(codes, cfg, *, seed) -> (Float[N], sample_rate)`; `text_to_music(prompt, cfg, …) -> (Float[N], sample_rate)` (contract §9); `python -m dcttgen.infer … --stage all|codes|audio`.
+- Produces: `prompt_to_codes(prompt, cfg, *, duration, bpm, moods, instruments, seed) -> (Plan, Long[K, T])`; `codes_to_wav(codes, cfg, *, seed) -> (Float[N], sample_rate)`; `text_to_music(prompt, cfg, …) -> (Float[N], sample_rate)` (contract §9); `python -m dc2t.infer … --stage all|codes|audio`.
 
-- [ ] **Step 1: write the failing test** — the language model and the codec are replaced by fakes with the contract's signatures. The test file imports chapter 03's `dcttgen/lm/generate.py` (to replace `generate_codes` in it), so chapter 03 must be in place.
+- [ ] **Step 1: write the failing test** — the language model and the codec are replaced by fakes with the contract's signatures. The test file imports chapter 03's `dc2t/lm/generate.py` (to replace `generate_codes` in it), so chapter 03 must be in place.
 
 <details>
 <summary><code>tests/test_infer.py</code> — 149 lines (click to expand)</summary>
@@ -1126,11 +1126,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import numpy as np
 import torch
 
-import dcttgen.infer as infer
-import dcttgen.lm.generate as lm_generate
-from dcttgen.config import ROOT, load_config
-from dcttgen.eval.run import centre, eval_plan, make_audio, make_codes, score, select
-from dcttgen.plan import Plan, plan_sections
+import dc2t.infer as infer
+import dc2t.lm.generate as lm_generate
+from dc2t.config import ROOT, load_config
+from dc2t.eval.run import centre, eval_plan, make_audio, make_codes, score, select
+from dc2t.plan import Plan, plan_sections
 
 K, V = 4, 10000
 CALLS = []
@@ -1268,15 +1268,15 @@ if __name__ == "__main__":
 
 </details>
 
-- [ ] **Step 2: run it, expect failure** — `python tests/test_infer.py` → `ModuleNotFoundError: No module named 'dcttgen.infer'`
+- [ ] **Step 2: run it, expect failure** — `python tests/test_infer.py` → `ModuleNotFoundError: No module named 'dc2t.infer'`
 - [ ] **Step 3: implement**
 
-**`dcttgen/infer.py`** — 133 lines
+**`dc2t/infer.py`** — 133 lines
 
 ```python
-"""python -m dcttgen.infer --config C --prompt "..." --out out.wav [--duration S --bpm N --moods a,b --instruments "x,y"] [--seed N]
-python -m dcttgen.infer --config C --prompt "..." --out piece.npy --stage codes     (language-model environment)
-python -m dcttgen.infer --config C --codes piece.npy --out out.wav --stage audio    (codec environment)
+"""python -m dc2t.infer --config C --prompt "..." --out out.wav [--duration S --bpm N --moods a,b --instruments "x,y"] [--seed N]
+python -m dc2t.infer --config C --prompt "..." --out piece.npy --stage codes     (language-model environment)
+python -m dc2t.infer --config C --codes piece.npy --out out.wav --stage audio    (codec environment)
 
 Text -> music in two steps: prompt_to_codes (chapter 03's generate_codes) and codes_to_wav (chapter 02's Codec.decode).
 The steps can run in different Python environments, because MuCodec and the language model need different library versions."""
@@ -1287,7 +1287,7 @@ import argparse
 import numpy as np
 import torch
 
-from dcttgen.plan import Plan, plan_sections
+from dc2t.plan import Plan, plan_sections
 
 _LOADED: dict = {}
 
@@ -1305,8 +1305,8 @@ def _device() -> torch.device:
 def load_lm_side(cfg):
     """(vocab, model), loaded once per process. Needs the language-model environment."""
     def make():
-        from dcttgen.lm.model import load_lm
-        from dcttgen.lm.vocab import Vocab
+        from dc2t.lm.model import load_lm
+        from dc2t.lm.vocab import Vocab
         if not cfg.lm.checkpoint:
             raise ValueError("lm.checkpoint is not set: there is no trained language model to generate with")
         vocab = Vocab.build(cfg)
@@ -1317,7 +1317,7 @@ def load_lm_side(cfg):
 def load_codec(cfg):
     """The codec with its decoder, loaded once per process. Needs the codec environment."""
     def make():
-        from dcttgen.codec.codec import Codec
+        from dc2t.codec.codec import Codec
         return Codec.load(cfg, _device(), encoder=False)
     return _once(("codec", id(cfg)), make)
 
@@ -1350,7 +1350,7 @@ def prompt_to_codes(prompt: str, cfg, *, duration: int | None = None, bpm: int |
     """-> (the plan that was used, codes Long[K, 25 * plan.duration])."""
     caption = clean_prompt(prompt, cfg.infer.max_prompt_chars)
     plan = make_plan(duration, bpm, moods, instruments)          # everything is validated before any model is loaded
-    from dcttgen.lm import generate as lm_generate               # imported here so that the codec environment never imports it
+    from dc2t.lm import generate as lm_generate               # imported here so that the codec environment never imports it
     vocab, model = load_lm_side(cfg)
     i = cfg.infer
     return lm_generate.generate_codes(model, vocab, caption, plan, temperature=i.temperature, top_k=i.top_k, top_p=i.top_p, seed=seed)
@@ -1383,7 +1383,7 @@ def main(argv=None) -> None:
     ap.add_argument("--seed", type=int)
     ap.add_argument("--override", action="append", default=[], metavar="a.b=value")
     args = ap.parse_args(argv)
-    from dcttgen.config import load_config
+    from dc2t.config import load_config
     cfg = load_config(args.config, args.override)
     items = lambda s: None if s is None else [x.strip() for x in s.split(",") if x.strip()]
     if args.stage == "audio":
@@ -1410,24 +1410,24 @@ if __name__ == "__main__":
 ```
 
 - [ ] **Step 4: run it, expect a pass** — after Task 4: `python tests/test_infer.py` → `test_infer: 5 tests passed`
-- [ ] **Step 5: commit** — `git add dcttgen/infer.py tests/test_infer.py && git commit -m "feat: two-step text-to-music inference"`
+- [ ] **Step 5: commit** — `git add dc2t/infer.py tests/test_infer.py && git commit -m "feat: two-step text-to-music inference"`
 
 ### Task 4: evaluation
 
-**Files:** Create `dcttgen/eval/run.py` · Test `tests/test_infer.py` (last two tests)
+**Files:** Create `dc2t/eval/run.py` · Test `tests/test_infer.py` (last two tests)
 
 **Interfaces:**
 - Consumes: `prompt_to_codes`, `codes_to_wav`; `manifest/<split>.jsonl`; `cfg.eval.*`; `third_party/stable-audio-metrics`.
-- Produces: `select`, `eval_plan`, `centre`; `make_codes(cfg, out, to_codes)`; `make_audio(cfg, out, to_wav, read, write)`; `score(cfg, out, metrics=None) -> {"n", "fd_openl3", "kl_passt", "clap_score"}`; `python -m dcttgen.eval.run --config C --out DIR --stage codes|audio|score`. In `DIR`: `codes/<clip_id>.npy`, `prompts.json`, `gen/<clip_id>.wav`, `ref/<clip_id>.wav`, `metrics.json`.
+- Produces: `select`, `eval_plan`, `centre`; `make_codes(cfg, out, to_codes)`; `make_audio(cfg, out, to_wav, read, write)`; `score(cfg, out, metrics=None) -> {"n", "fd_openl3", "kl_passt", "clap_score"}`; `python -m dc2t.eval.run --config C --out DIR --stage codes|audio|score`. In `DIR`: `codes/<clip_id>.npy`, `prompts.json`, `gen/<clip_id>.wav`, `ref/<clip_id>.wav`, `metrics.json`.
 
 - [ ] **Step 1:** the tests are the last two functions of `tests/test_infer.py` above.
-- [ ] **Step 2: run it, expect failure** — `ModuleNotFoundError: No module named 'dcttgen.eval.run'`
+- [ ] **Step 2: run it, expect failure** — `ModuleNotFoundError: No module named 'dc2t.eval.run'`
 - [ ] **Step 3: implement**
 
-**`dcttgen/eval/run.py`** — 143 lines
+**`dc2t/eval/run.py`** — 143 lines
 
 ```python
-"""python -m dcttgen.eval.run --config C --out runs/eval/NAME --stage codes|audio|score [--override a.b=value ...]
+"""python -m dc2t.eval.run --config C --out runs/eval/NAME --stage codes|audio|score [--override a.b=value ...]
 
 codes (language-model environment): one code matrix per validation prompt -> OUT/codes/<clip_id>.npy, and OUT/prompts.json
 audio (codec environment):          OUT/gen/<clip_id>.wav from those codes, and the reference clips -> OUT/ref/<clip_id>.wav
@@ -1444,7 +1444,7 @@ from pathlib import Path
 
 import numpy as np
 
-from dcttgen.plan import Plan, plan_sections
+from dc2t.plan import Plan, plan_sections
 
 
 def select(rows: list[dict], n: int, seed: int) -> list[dict]:
@@ -1553,16 +1553,16 @@ def main(argv=None) -> None:
     ap.add_argument("--stage", required=True, choices=("codes", "audio", "score"))
     ap.add_argument("--override", action="append", default=[], metavar="a.b=value")
     args = ap.parse_args(argv)
-    from dcttgen.config import load_config
+    from dc2t.config import load_config
     cfg = load_config(args.config, args.override)
     if args.stage == "score":
         print(json.dumps(score(cfg, args.out), indent=1))
     elif args.stage == "codes":
-        from dcttgen.infer import prompt_to_codes
+        from dc2t.infer import prompt_to_codes
         print(f"generated {make_codes(cfg, args.out, prompt_to_codes)} code files in {args.out}/codes")
     else:
         import soundfile as sf
-        from dcttgen.infer import codes_to_wav
+        from dc2t.infer import codes_to_wav
         read = lambda path: sf.read(str(path), dtype="float32")
         write = lambda path, wav, sr: sf.write(str(path), wav.numpy() if hasattr(wav, "numpy") else wav, sr, subtype="PCM_16")
         print(f"decoded {make_audio(cfg, args.out, codes_to_wav, read, write)} pieces into {args.out}/gen")
@@ -1573,7 +1573,7 @@ if __name__ == "__main__":
 ```
 
 - [ ] **Step 4: run it, expect a pass** — `python tests/test_infer.py` → `test_infer: 5 tests passed`
-- [ ] **Step 5: commit** — `git add dcttgen/eval tests/test_infer.py && git commit -m "feat: staged evaluation runner"`
+- [ ] **Step 5: commit** — `git add dc2t/eval tests/test_infer.py && git commit -m "feat: staged evaluation runner"`
 
 **Not executed:** the real metric functions. `score` was run with stand-ins that record their arguments; the argument names are the ones in the library's source (§1.5).
 
@@ -1581,7 +1581,7 @@ if __name__ == "__main__":
 
 **Files:** Test `tests/test_integration.py`
 
-Run this once chapters 03 and 04 are both in place. It drives the real `dcttgen.lm.train` through the real `load_config` and `fit` on CPU — tiny random Qwen2, synthetic dataset — then resumes, fine-tunes from the pre-training checkpoint, reloads the result and generates codes. It is the only test that exercises the seams between the chapters: the batch sampler under `accelerate`, per-level losses reaching the log, the tied-weight checkpoint, the codec guard, and deterministic generation from a reloaded model.
+Run this once chapters 03 and 04 are both in place. It drives the real `dc2t.lm.train` through the real `load_config` and `fit` on CPU — tiny random Qwen2, synthetic dataset — then resumes, fine-tunes from the pre-training checkpoint, reloads the result and generates codes. It is the only test that exercises the seams between the chapters: the batch sampler under `accelerate`, per-level losses reaching the log, the tied-weight checkpoint, the codec guard, and deterministic generation from a reloaded model.
 
 <details>
 <summary><code>tests/test_integration.py</code> — 57 lines (click to expand)</summary>
@@ -1600,12 +1600,12 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import torch
 from lm_testkit import backbone_dir, write_dataset
 
-from dcttgen.config import ROOT, load_config
-from dcttgen.lm.generate import generate_codes
-from dcttgen.lm.model import load_lm
-from dcttgen.lm.train import main as train_lm
-from dcttgen.lm.vocab import Vocab
-from dcttgen.plan import Plan, plan_sections
+from dc2t.config import ROOT, load_config
+from dc2t.lm.generate import generate_codes
+from dc2t.lm.model import load_lm
+from dc2t.lm.train import main as train_lm
+from dc2t.lm.vocab import Vocab
+from dc2t.plan import Plan, plan_sections
 
 
 def test_train_checkpoint_resume_reload_generate():
@@ -1661,30 +1661,30 @@ if __name__ == "__main__":
 | Milestone | Commands | Produces |
 |---|---|---|
 | **M0** environment | Task 0. `E:lm` `python -m pytest -q`. `E:lm` on Linux `python tests/ddp_check.py`. `E:codec` the reconstruction snippet of chapter 02 §4 on three clips | a green suite; `DDP CHECK OK`; three reconstructions to listen to |
-| **M1** pilot data (≈ 20 h) | `E:data` the commands of chapter 01 §4, with `C=configs/bootstrap_k1.yaml,configs/pilot.yaml` | `data/audio/`, `data/manifest/`; `python -m dcttgen.data.manifest --config $C` exits 0 |
-| **M2** bootstrap, end to end | `E:codec` `python -m dcttgen.codec.tokenize --config $C` → `E:lm` `python -m dcttgen.lm.train --config $C --phase pretrain` → `E:lm` `python -m dcttgen.lm.train --config $C --phase finetune --override lm.checkpoint=runs/lm_pretrain/<name>/step_<N>` → the two inference commands below | a wav file of the requested length from a text prompt |
-| **M3** codec (plan path) | `E:codec` `python -m dcttgen.codec.train --config configs/plan_k4.yaml --fit-norm`, then `accelerate launch -m dcttgen.codec.train --config configs/plan_k4.yaml --override train.batch_size=4 --override train.grad_accum=2` ; the sweep of chapter 02 §4 | `runs/codec/k4v10000/step_*`; the steps-versus-quality table |
-| **M4** full model | `E:codec` tokenise with `--override codec.checkpoint=…` (8 shards) → `E:lm` `accelerate launch -m dcttgen.lm.train --config configs/plan_k4.yaml --phase pretrain`, then `--phase finetune` | `runs/lm_finetune/<name>/step_*` |
+| **M1** pilot data (≈ 20 h) | `E:data` the commands of chapter 01 §4, with `C=configs/bootstrap_k1.yaml,configs/pilot.yaml` | `data/audio/`, `data/manifest/`; `python -m dc2t.data.manifest --config $C` exits 0 |
+| **M2** bootstrap, end to end | `E:codec` `python -m dc2t.codec.tokenize --config $C` → `E:lm` `python -m dc2t.lm.train --config $C --phase pretrain` → `E:lm` `python -m dc2t.lm.train --config $C --phase finetune --override lm.checkpoint=runs/lm_pretrain/<name>/step_<N>` → the two inference commands below | a wav file of the requested length from a text prompt |
+| **M3** codec (plan path) | `E:codec` `python -m dc2t.codec.train --config configs/plan_k4.yaml --fit-norm`, then `accelerate launch -m dc2t.codec.train --config configs/plan_k4.yaml --override train.batch_size=4 --override train.grad_accum=2` ; the sweep of chapter 02 §4 | `runs/codec/k4v10000/step_*`; the steps-versus-quality table |
+| **M4** full model | `E:codec` tokenise with `--override codec.checkpoint=…` (8 shards) → `E:lm` `accelerate launch -m dc2t.lm.train --config configs/plan_k4.yaml --phase pretrain`, then `--phase finetune` | `runs/lm_finetune/<name>/step_*` |
 | **M5** evaluation | the three evaluation commands below, once per model | `runs/eval/<name>/metrics.json`; the table of §1.5 |
 
 ```bash
 # inference in two steps (M2 onwards). CKPT = runs/lm_finetune/<name>/step_<N>
 # E:lm
-python -m dcttgen.infer --config $C --override lm.checkpoint=$CKPT --stage codes --out piece.npy --seed 1 \
+python -m dc2t.infer --config $C --override lm.checkpoint=$CKPT --stage codes --out piece.npy --seed 1 \
     --prompt "A joyful and uplifting Don ca tai tu piece with fast tempo, performed by zither, two-string fiddle, and moon-shaped lute" \
     --duration 150 --bpm 80 --moods uplifting,joyful --instruments "zither,two-string fiddle,moon-shaped lute"
 # E:codec
-python -m dcttgen.infer --config $C --stage audio --codes piece.npy --out piece.wav --seed 1
+python -m dc2t.infer --config $C --stage audio --codes piece.npy --out piece.wav --seed 1
 
 # evaluation in three steps (M5)
-python -m dcttgen.eval.run --config $C --override lm.checkpoint=$CKPT --out runs/eval/dcttgen --stage codes     # E:lm
-python -m dcttgen.eval.run --config $C --out runs/eval/dcttgen --stage audio                                    # E:codec
-python -m dcttgen.eval.run --config $C --out runs/eval/dcttgen --stage score                                    # E:eval
+python -m dc2t.eval.run --config $C --override lm.checkpoint=$CKPT --out runs/eval/dc2t --stage codes     # E:lm
+python -m dc2t.eval.run --config $C --out runs/eval/dc2t --stage audio                                    # E:codec
+python -m dc2t.eval.run --config $C --out runs/eval/dc2t --stage score                                    # E:eval
 ```
 
 On 8 GPUs, prefix a training command with `accelerate launch --multi_gpu --num_processes 8 -m` in place of `python -m` (**Verified** flags: `accelerate launch --help` lists `-m/--module`, `--multi_gpu`, `--num_processes`). The effective batch is then `batch_size × grad_accum × 8`; only the main process logs and writes `trainer_state.json`.
 
-For a baseline, put its generated files, named `<clip_id>.wav`, into `runs/eval/<baseline>/gen/`, copy `prompts.json` and `ref/` from the DcttGen evaluation directory, and run only the `score` stage.
+For a baseline, put its generated files, named `<clip_id>.wav`, into `runs/eval/<baseline>/gen/`, copy `prompts.json` and `ref/` from the DC2T evaluation directory, and run only the `score` stage.
 
 ### 4.2 Baselines (plan §4.1)
 
@@ -1709,7 +1709,7 @@ Pointers and facts read from each project's own documentation; none was run.
 
 ### 4.4 Compute ladder
 
-Every entry is an expectation, **Unverified**; replace it with the output of `python -m dcttgen.lm.train … --probe` and the first hundred logged steps.
+Every entry is an expectation, **Unverified**; replace it with the output of `python -m dc2t.lm.train … --probe` and the first hundred logged steps.
 
 | Hardware | Realistic scope |
 |---|---|
@@ -1730,7 +1730,7 @@ Every entry is an expectation, **Unverified**; replace it with the output of `py
 | 5 | Dependency conflicts between MuCodec and the language model | Verified and designed for: separate environments, file hand-offs |
 | 6 | Multi-GPU training has never run | `tests/ddp_check.py` on Linux in M0 |
 | 7 | FD on a small validation set is unstable | Report `n`; judge the pilot by ear and by validation loss |
-| 8 | Baselines cost more than DcttGen itself (MusicLM from scratch) | Decide the baseline set before M3 |
+| 8 | Baselines cost more than DC2T itself (MusicLM from scratch) | Decide the baseline set before M3 |
 | 9 | Tempo and mood labels are unreliable for this music | Expert review of 100 pilot clips (chapter 01) |
 | 10 | The codec weights are CC-BY-NC | Fine for research; any public demo or release inherits the restriction |
 

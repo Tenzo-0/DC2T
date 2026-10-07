@@ -7,8 +7,8 @@ from pathlib import Path
 
 import numpy as np
 
-from dcttgen.data.common import fingerprint, load_marker, save_marker, tmp_name
-from dcttgen.plan import MIN_CLIP_S, max_clip_seconds
+from dc2t.data.common import fingerprint, load_marker, save_marker, tmp_name
+from dc2t.plan import MIN_CLIP_S, max_clip_seconds
 
 
 @dataclass(frozen=True)

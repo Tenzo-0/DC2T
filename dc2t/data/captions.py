@@ -5,7 +5,7 @@ import re
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
-from dcttgen.data.common import read_jsonl
+from dc2t.data.common import read_jsonl
 
 MAX_WORDS = 60
 # Every English word that counts as a mention of one of the six instruments. "gong" alone is read as gong ban.

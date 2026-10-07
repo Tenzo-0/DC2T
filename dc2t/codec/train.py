@@ -1,4 +1,4 @@
-"""python -m dcttgen.codec.train --config C [--override a.b=value ...] [--name N] [--fit-norm]
+"""python -m dc2t.codec.train --config C [--override a.b=value ...] [--name N] [--fit-norm]
 
 Trains the K x V RVQ and the Rectified Flow Transformer together, on frozen MuEncoder features and frozen Mel-VAE latents
 (plan 3.4, 3.6). Run it once with --fit-norm (one process), then without it (any number of processes, through fit())."""
@@ -15,8 +15,8 @@ import torch.nn.functional as F
 from torch import nn
 from torch.utils.data import DataLoader, Dataset
 
-from dcttgen.codec.codec import VAE_SR, Released, to_rate
-from dcttgen.codec.rf import LatentNorm, RFConfig, RFTransformer, pair_frames, rf_loss, sample_t
+from dc2t.codec.codec import VAE_SR, Released, to_rate
+from dc2t.codec.rf import LatentNorm, RFConfig, RFTransformer, pair_frames, rf_loss, sample_t
 
 
 class CodecTrainer(nn.Module):
@@ -105,8 +105,8 @@ def main(argv=None) -> None:
     ap.add_argument("--name", help="run directory name; default codec.tag")
     ap.add_argument("--fit-norm", action="store_true", help="compute the latent statistics, write latent_norm.pt and exit")
     args = ap.parse_args(argv)
-    from dcttgen.config import load_config      # chapter 04
-    from dcttgen.engine import fit              # chapter 04
+    from dc2t.config import load_config      # chapter 04
+    from dc2t.engine import fit              # chapter 04
     cfg = load_config(args.config, args.override)
     t = cfg.train
     device = torch.device("cuda", int(os.environ.get("LOCAL_RANK", 0))) if torch.cuda.is_available() else torch.device("cpu")

@@ -7,7 +7,7 @@ import csv
 import hashlib
 from pathlib import Path
 
-from dcttgen.data.vocab import INSTRUMENTS
+from dc2t.data.vocab import INSTRUMENTS
 
 COLUMNS = ("recording_id", *INSTRUMENTS, "other", "notes")      # `other`: a loud instrument that is not one of the six
 
