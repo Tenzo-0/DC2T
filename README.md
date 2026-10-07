@@ -37,22 +37,6 @@ The audio tokenizer builds on [MuCodec](https://github.com/xuyaoxun/MuCodec). Tw
 | `tests/` | 131 CPU tests |
 | `Research-Plan-1.pdf` | The research plan this implements |
 
-## Running the tests
-
-With only [`uv`](https://docs.astral.sh/uv/) installed, from the repository root (one line; installs nothing into the repository):
-
-```
-uv run --no-project --with pytest --with accelerate --with scipy --with soundfile --with librosa --with soxr --with torch==2.9.0 --with transformers==4.57.1 --with pyyaml --with numpy --with safetensors python -m pytest -q
-```
-
-Expected: `131 passed` in about a minute on a laptop CPU. The audio tests also need `ffmpeg` on the `PATH`; without it they print `skipped:` instead of running.
-
-## What is verified
-
-- **Runs and passes on CPU:** all 131 tests, including one that trains a tiny model, checkpoints, resumes, fine-tunes, reloads and generates.
-- **Not yet run:** anything on a GPU, training on more than one process, the real MuCodec checkpoints, and the external data and evaluation tools. The [guide](docs/guide/README.md) lists each one with how to check it.
-- **Not yet written:** the data pipeline's command-line driver (guide chapter 01, Task 9).
-
 ## Third-party components
 
 MuCodec's code is MIT-licensed; its released weights are **CC-BY-NC 4.0** (non-commercial). Anything trained on top of those weights inherits that restriction. This repository contains none of them; the guide explains how to fetch them.
